@@ -59,8 +59,24 @@ struct GitHubContributionsView: View {
         }
     }
     
-
+    // コミット日時のフォーマット
+    private func formatCommitDate(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: dateString) else { return dateString }
+        
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "M/d HH:mm"
+        displayFormatter.locale = Locale(identifier: "ja_JP")
+        return displayFormatter.string(from: date)
+    }
     
+    // コミットメッセージの短縮
+    private func shortenCommitMessage(_ message: String) -> String {
+        let lines = message.components(separatedBy: .newlines)
+        let firstLine = lines.first ?? message
+        return firstLine.count > 50 ? String(firstLine.prefix(50)) + "..." : firstLine
+    }
+
     var body: some View {
         NavigationView {
             Group {
@@ -99,14 +115,14 @@ struct GitHubContributionsView: View {
                     VStack(spacing: 30) {
                         Image(systemName: "person.circle.fill")
                             .font(.system(size: 80))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.gray)
                         
                         VStack(spacing: 15) {
                             Text("ユーザー名を設定してください")
                                 .font(.title2)
                                 .fontWeight(.bold)
                             
-                            Text("設定タブでデフォルトのGitHubユーザー名を設定してください。")
+                            Text("GitHubのユーザー名を設定タブで設定してください。")
                                 .font(.body)
                                 .multilineTextAlignment(.center)
                                 .foregroundColor(.secondary)
@@ -125,140 +141,198 @@ struct GitHubContributionsView: View {
                     }
                     .padding(.top, 60)
                 } else {
-                    // コントリビューション情報を表示
-                    VStack(spacing: 20) {
-                        // ヘッダー
-                        VStack(spacing: 15) {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text("GitHub Contributions")
-                                        .font(.title)
-                                        .fontWeight(.bold)
-                                    
-                                    Text(settingsManager.defaultGitHubUsername)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                Spacer()
-                                
-                                // キャラクターボタン
-                                Button(action: { showingCharacter = true }) {
-                                    VStack(spacing: 4) {
-                                        Text(characterManager.character.stage.emoji)
-                                            .font(.system(size: 40))
-                                        Text(characterManager.character.stage.name)
-                                            .font(.caption)
-                                            .foregroundColor(characterManager.character.stage.color)
+                    // メインコンテンツ
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            // キャラクター表示エリア
+                            if let contributionData = graphQLClient.contributionData {
+                                VStack(spacing: 15) {
+                                    // キャラクター表示
+                                    Button(action: { showingCharacter = true }) {
+                                        CharacterView(characterManager: characterManager)
+                                            .frame(height: 120)
                                     }
-                                    .padding(8)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .fill(Color.gray.opacity(0.1))
-                                    )
+                                    .buttonStyle(PlainButtonStyle())
+                                    
+                                    // コントリビューション統計
+                                    HStack(spacing: 20) {
+                                        VStack {
+                                            Text("\(contributionData.totalContributions)")
+                                                .font(.title2)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.green)
+                                            Text("総コントリビューション")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        Divider()
+                                            .frame(height: 30)
+                                        
+                                        VStack {
+                                            Text("\(settingsManager.defaultGitHubUsername)")
+                                                .font(.title2)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.blue)
+                                            Text("ユーザー名")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    .padding(.horizontal)
                                 }
-                            }
-                        }
-                        .padding(.top, 20)
-                        
-                        // エラーメッセージ
-                        if let errorMessage = graphQLClient.errorMessage {
-                            Text(errorMessage)
-                                .foregroundColor(.red)
                                 .padding()
-                                .background(Color.red.opacity(0.1))
-                                .cornerRadius(8)
-                                .padding(.horizontal, 20)
-                        }
-                        
-                        // コントリビューション情報
-                        if let contributionData = graphQLClient.contributionData {
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 20) {
-                                    // 総コントリビューション数
+                                .background(Color(.systemBackground))
+                                .cornerRadius(15)
+                                .shadow(radius: 2)
+                                .padding(.horizontal)
+                            }
+                            
+                            // カレンダー表示エリア
+                            if let contributionData = graphQLClient.contributionData {
+                                VStack(spacing: 15) {
+                                    // 月切り替えボタン
                                     HStack {
-                                        Image(systemName: "star.fill")
-                                            .foregroundColor(.yellow)
-                                        Text("総コントリビューション数")
-                                            .fontWeight(.semibold)
+                                        Button(action: previousMonth) {
+                                            Image(systemName: "chevron.left")
+                                                .foregroundColor(.blue)
+                                        }
+                                        
                                         Spacer()
-                                        Text("\(contributionData.totalContributions)")
-                                            .font(.title2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.blue)
+                                        
+                                        Button(action: { showingDatePicker = true }) {
+                                            Text(monthYearString)
+                                                .font(.title2)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.primary)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Button(action: nextMonth) {
+                                            Image(systemName: "chevron.right")
+                                                .foregroundColor(.blue)
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                    
+                                    // 曜日ヘッダー
+                                    HStack(spacing: 0) {
+                                        ForEach(["日", "月", "火", "水", "木", "金", "土"], id: \.self) { dayOfWeek in
+                                            Text(dayOfWeek)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 8)
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                    
+                                    // カレンダーグリッド
+                                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 0) {
+                                        ForEach(calendarDays, id: \.self) { day in
+                                            CalendarDayView(day: day, contributionData: contributionData)
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                }
+                                .padding()
+                                .background(Color(.systemBackground))
+                                .cornerRadius(15)
+                                .shadow(radius: 2)
+                                .padding(.horizontal)
+                            }
+                            
+                            // 最近のコミット表示エリア
+                            VStack(spacing: 15) {
+                                HStack {
+                                    Image(systemName: "git.branch")
+                                        .foregroundColor(.blue)
+                                    Text("最近のコミット")
+                                        .font(.headline)
+                                        .fontWeight(.bold)
+                                    Spacer()
+                                }
+                                .padding(.horizontal)
+                                
+                                if graphQLClient.isLoading {
+                                    HStack {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                        Text("コミット情報を取得中...")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
                                     }
                                     .padding()
-                                    .background(Color.gray.opacity(0.1))
+                                } else if !graphQLClient.recentCommits.isEmpty {
+                                    VStack(spacing: 8) {
+                                        ForEach(Array(graphQLClient.recentCommits.enumerated()), id: \.offset) { index, commit in
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                HStack {
+                                                    Text(shortenCommitMessage(commit.message))
+                                                        .font(.caption)
+                                                        .fontWeight(.medium)
+                                                        .foregroundColor(.primary)
+                                                        .lineLimit(2)
+                                                    
+                                                    Spacer()
+                                                    
+                                                    Text(formatCommitDate(commit.committedDate))
+                                                        .font(.caption2)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                                
+                                                if let repositoryName = commit.repository?.name {
+                                                    Text(repositoryName)
+                                                        .font(.caption2)
+                                                        .foregroundColor(.blue)
+                                                }
+                                                
+                                                if index < graphQLClient.recentCommits.count - 1 {
+                                                    Divider()
+                                                        .padding(.top, 4)
+                                                }
+                                            }
+                                            .padding(.horizontal)
+                                            .padding(.vertical, 4)
+                                        }
+                                    }
+                                    .padding(.vertical, 8)
+                                    .background(Color(.systemGray6))
                                     .cornerRadius(10)
-                                    
-                                    // カレンダー表示
-                                    VStack(alignment: .leading, spacing: 15) {
-                                        // 月ヘッダー
-                                        HStack {
-                                            Button(action: previousMonth) {
-                                                Image(systemName: "chevron.left")
-                                                    .foregroundColor(.blue)
-                                            }
-                                            
-                                            Spacer()
-                                            
-                                            Button(action: { showingDatePicker = true }) {
-                                                Text(monthYearString)
-                                                    .font(.title2)
-                                                    .fontWeight(.bold)
-                                                    .foregroundColor(.primary)
-                                            }
-                                            
-                                            Spacer()
-                                            
-                                            Button(action: nextMonth) {
-                                                Image(systemName: "chevron.right")
-                                                    .foregroundColor(.blue)
-                                            }
-                                        }
-                                        .padding(.horizontal)
-                                        
-                                        // 曜日ヘッダー
-                                        HStack(spacing: 0) {
-                                            ForEach(["日", "月", "火", "水", "木", "金", "土"], id: \.self) { dayOfWeek in
-                                                Text(dayOfWeek)
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                                    .frame(maxWidth: .infinity)
-                                                    .padding(.vertical, 8)
-                                            }
-                                        }
-                                        .padding(.horizontal)
-                                        
-                                        // カレンダーグリッド
-                                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 0) {
-                                            ForEach(calendarDays, id: \.self) { day in
-                                                CalendarDayView(day: day, contributionData: contributionData)
-                                            }
-                                        }
-                                        .padding(.horizontal)
-                                    }
-                                    .sheet(isPresented: $showingDatePicker) {
-                                        DatePickerView(selectedDate: $currentDate)
-                                    }
-                                    .sheet(isPresented: $showingCharacter) {
-                                        CharacterView(characterManager: characterManager)
-                                    }
+                                    .padding(.horizontal)
+                                } else {
+                                    Text("コミット情報がありません")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .padding()
                                 }
                             }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(15)
+                            .shadow(radius: 2)
+                            .padding(.horizontal)
+                            
+                            Spacer()
                         }
-                        
-                        Spacer()
+                    }
+                    .sheet(isPresented: $showingDatePicker) {
+                        DatePickerView(selectedDate: $currentDate)
+                    }
+                    .sheet(isPresented: $showingCharacter) {
+                        CharacterView(characterManager: characterManager)
                     }
                 }
             }
         }
         .navigationTitle("GitHub Contributions")
         .onAppear {
-            // 設定が完了している場合は自動的にコントリビューションを取得
+            // 設定が完了している場合は自動的にコントリビューションとコミット情報を取得
             if settingsManager.hasGitHubToken() && !settingsManager.defaultGitHubUsername.isEmpty {
                 Task {
                     await graphQLClient.fetchUserContributions(userName: settingsManager.defaultGitHubUsername)
+                    await graphQLClient.fetchRecentCommits(userName: settingsManager.defaultGitHubUsername)
                 }
             }
         }
@@ -271,6 +345,7 @@ struct GitHubContributionsView: View {
             if settingsManager.hasGitHubToken() && !settingsManager.defaultGitHubUsername.isEmpty {
                 Task {
                     await graphQLClient.fetchUserContributions(userName: settingsManager.defaultGitHubUsername)
+                    await graphQLClient.fetchRecentCommits(userName: settingsManager.defaultGitHubUsername)
                 }
             }
         }
@@ -279,6 +354,7 @@ struct GitHubContributionsView: View {
             if settingsManager.hasGitHubToken() && !settingsManager.defaultGitHubUsername.isEmpty {
                 Task {
                     await graphQLClient.fetchUserContributions(userName: settingsManager.defaultGitHubUsername)
+                    await graphQLClient.fetchRecentCommits(userName: settingsManager.defaultGitHubUsername)
                 }
             }
         }

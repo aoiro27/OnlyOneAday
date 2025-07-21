@@ -22,12 +22,19 @@ struct ContentView: View {
                 }
                 .tag(0)
             
+            StudyView()
+                .tabItem {
+                    Image(systemName: "book.fill")
+                    Text("学習")
+                }
+                .tag(1)
+            
             SettingsView()
                 .tabItem {
                     Image(systemName: "gear")
                     Text("設定")
                 }
-                .tag(1)
+                .tag(2)
             
             NavigationSplitView {
                 List {
@@ -57,7 +64,7 @@ struct ContentView: View {
                 Image(systemName: "list.bullet")
                 Text("Items")
             }
-            .tag(2)
+            .tag(3)
         }
     }
 
@@ -79,5 +86,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: [Item.self, StudySession.self], inMemory: true)
 }
