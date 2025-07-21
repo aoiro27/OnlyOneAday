@@ -357,5 +357,5 @@ struct StudySessionListView: View {
 
 #Preview {
     StudyView()
-        .modelContainer(for: [Item.self, StudySession.self], inMemory: true)
+        .modelContainer(for: [StudySession.self], inMemory: true)
 } 

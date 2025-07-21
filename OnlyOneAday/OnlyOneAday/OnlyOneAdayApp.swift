@@ -13,6 +13,8 @@ struct OnlyOneAdayApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             StudySession.self,
+            Goal.self,
+            Reward.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

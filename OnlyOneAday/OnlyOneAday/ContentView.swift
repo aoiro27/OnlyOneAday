@@ -27,17 +27,31 @@ struct ContentView: View {
                 }
                 .tag(1)
             
+            GoalsView()
+                .tabItem {
+                    Image(systemName: "target")
+                    Text("目標")
+                }
+                .tag(2)
+            
+            RewardsView()
+                .tabItem {
+                    Image(systemName: "gift")
+                    Text("報酬")
+                }
+                .tag(3)
+            
             SettingsView()
                 .tabItem {
                     Image(systemName: "gear")
                     Text("設定")
                 }
-                .tag(2)
+                .tag(4)
         }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: [StudySession.self], inMemory: true)
+        .modelContainer(for: [StudySession.self, Goal.self, Reward.self], inMemory: true)
 }
