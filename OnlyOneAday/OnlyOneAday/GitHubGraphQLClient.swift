@@ -2,38 +2,38 @@ import Foundation
 import Combine
 
 // GitHub GraphQL APIのレスポンスモデル
-struct GitHubResponse: Codable {
+struct GitHubResponse: Codable, Equatable {
     let data: UserData?
     let errors: [GraphQLError]?
 }
 
-struct UserData: Codable {
+struct UserData: Codable, Equatable {
     let user: User?
 }
 
-struct User: Codable {
+struct User: Codable, Equatable {
     let contributionsCollection: ContributionsCollection?
 }
 
-struct ContributionsCollection: Codable {
+struct ContributionsCollection: Codable, Equatable {
     let contributionCalendar: ContributionCalendar?
 }
 
-struct ContributionCalendar: Codable {
+struct ContributionCalendar: Codable, Equatable {
     let totalContributions: Int
     let weeks: [Week]
 }
 
-struct Week: Codable {
+struct Week: Codable, Equatable {
     let contributionDays: [ContributionDay]
 }
 
-struct ContributionDay: Codable {
+struct ContributionDay: Codable, Equatable {
     let contributionCount: Int
     let date: String
 }
 
-struct GraphQLError: Codable {
+struct GraphQLError: Codable, Equatable {
     let message: String
 }
 

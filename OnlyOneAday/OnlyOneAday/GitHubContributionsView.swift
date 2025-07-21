@@ -3,9 +3,11 @@ import SwiftUI
 struct GitHubContributionsView: View {
     @StateObject private var graphQLClient = GitHubGraphQLClient()
     @StateObject private var settingsManager = SettingsManager.shared
+    @StateObject private var characterManager = CharacterManager()
     @Binding var selectedTab: Int
     @State private var currentDate = Date()
     @State private var showingDatePicker = false
+    @State private var showingCharacter = false
     
     // カレンダー関連の計算プロパティ
     private var monthYearString: String {
@@ -126,18 +128,36 @@ struct GitHubContributionsView: View {
                     // コントリビューション情報を表示
                     VStack(spacing: 20) {
                         // ヘッダー
-                        VStack {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 60))
-                                .foregroundColor(.blue)
-                            
-                            Text("GitHub Contributions")
-                                .font(.title)
-                                .fontWeight(.bold)
-                            
-                            Text(settingsManager.defaultGitHubUsername)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                        VStack(spacing: 15) {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text("GitHub Contributions")
+                                        .font(.title)
+                                        .fontWeight(.bold)
+                                    
+                                    Text(settingsManager.defaultGitHubUsername)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                // キャラクターボタン
+                                Button(action: { showingCharacter = true }) {
+                                    VStack(spacing: 4) {
+                                        Text(characterManager.character.stage.emoji)
+                                            .font(.system(size: 40))
+                                        Text(characterManager.character.stage.name)
+                                            .font(.caption)
+                                            .foregroundColor(characterManager.character.stage.color)
+                                    }
+                                    .padding(8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(Color.gray.opacity(0.1))
+                                    )
+                                }
+                            }
                         }
                         .padding(.top, 20)
                         
@@ -221,6 +241,9 @@ struct GitHubContributionsView: View {
                                     .sheet(isPresented: $showingDatePicker) {
                                         DatePickerView(selectedDate: $currentDate)
                                     }
+                                    .sheet(isPresented: $showingCharacter) {
+                                        CharacterView(characterManager: characterManager)
+                                    }
                                 }
                             }
                         }
@@ -238,6 +261,10 @@ struct GitHubContributionsView: View {
                     await graphQLClient.fetchUserContributions(userName: settingsManager.defaultGitHubUsername)
                 }
             }
+        }
+        .onChange(of: graphQLClient.contributionData) { _, newData in
+            // コントリビューションデータが更新されたらキャラクターも更新
+            characterManager.updateCharacter(with: newData)
         }
         .onChange(of: settingsManager.githubAccessToken) { _, _ in
             // トークンが変更された場合、ユーザー名も設定されていれば再取得
