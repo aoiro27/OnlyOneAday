@@ -145,7 +145,6 @@ class StudyManager: ObservableObject {
         guard let sessions = try? modelContext.fetch(descriptor) else {
             return 0
         }
-        
         return sessions.reduce(0) { $0 + $1.duration }
     }
     

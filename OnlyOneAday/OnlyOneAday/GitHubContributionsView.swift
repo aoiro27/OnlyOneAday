@@ -8,6 +8,7 @@ struct GitHubContributionsView: View {
     @State private var currentDate = Date()
     @State private var showingDatePicker = false
     @State private var showingCharacter = false
+    @State private var showingCharacterDetail = false
     
     // カレンダー関連の計算プロパティ
     private var monthYearString: String {
@@ -167,70 +168,87 @@ struct GitHubContributionsView: View {
                             if let contributionData = graphQLClient.contributionData {
                                 VStack(spacing: 15) {
                                     // キャラクター情報
-                                    HStack(spacing: 15) {
-                                        // キャラクターステータス
-                                        VStack(spacing: 8) {
-                                            Text(characterManager.character.stage.emoji)
-                                                .font(.system(size: 40))
-                                                .scaleEffect(1.0)
-                                                .animation(.easeInOut(duration: 0.5), value: characterManager.character.stage)
+                                    Button(action: { showingCharacterDetail = true }) {
+                                        HStack(spacing: 15) {
+                                            // キャラクターステータス（サムネイル画像付き）
+                                            VStack(spacing: 8) {
+                                                // サムネイル画像
+                                                Image("character_stage\(characterManager.character.stage.rawValue)")
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fit)
+                                                    .frame(width: 60, height: 60)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                                    .shadow(radius: 2)
+                                                
+                                                // 既存の絵文字表示（フォールバック）
+                                                Text(characterManager.character.stage.emoji)
+                                                    .font(.system(size: 20))
+                                                    .scaleEffect(1.0)
+                                                    .animation(.easeInOut(duration: 0.5), value: characterManager.character.stage)
+                                                
+                                                Text(characterManager.character.stage.name)
+                                                    .font(.caption)
+                                                    .fontWeight(.bold)
+                                                    .foregroundColor(characterManager.character.stage.color)
+                                            }
+                                            .frame(width: 80)
                                             
-                                            Text(characterManager.character.stage.name)
+                                            // 統計情報
+                                            VStack(spacing: 8) {
+                                                HStack(spacing: 15) {
+                                                    VStack(spacing: 2) {
+                                                        Text("\(characterManager.character.totalCommits)")
+                                                            .font(.title3)
+                                                            .fontWeight(.bold)
+                                                            .foregroundColor(.yellow)
+                                                        Text("総コミット数")
+                                                            .font(.caption2)
+                                                            .foregroundColor(.secondary)
+                                                    }
+                                                    
+                                                    VStack(spacing: 2) {
+                                                        Text("\(characterManager.character.consecutiveDays)")
+                                                            .font(.title3)
+                                                            .fontWeight(.bold)
+                                                            .foregroundColor(.orange)
+                                                        Text("連続コミット")
+                                                            .font(.caption2)
+                                                            .foregroundColor(.secondary)
+                                                    }
+                                                    
+                                                    VStack(spacing: 2) {
+                                                        Text("\(characterManager.character.maxConsecutiveDays)")
+                                                            .font(.title3)
+                                                            .fontWeight(.bold)
+                                                            .foregroundColor(.purple)
+                                                        Text("最高連続記録")
+                                                            .font(.caption2)
+                                                            .foregroundColor(.secondary)
+                                                    }
+                                                }
+                                                
+                                                HStack {
+                                                    Text("\(settingsManager.defaultGitHubUsername)")
+                                                        .font(.caption)
+                                                        .fontWeight(.semibold)
+                                                        .foregroundColor(.blue)
+                                                    Spacer()
+                                                    Text("総コントリビューション: \(contributionData.totalContributions)")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            // 詳細表示アイコン
+                                            Image(systemName: "chevron.right")
+                                                .foregroundColor(.blue)
                                                 .font(.caption)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(characterManager.character.stage.color)
                                         }
-                                        .frame(width: 80)
-                                        
-                                        // 統計情報
-                                        VStack(spacing: 8) {
-                                            HStack(spacing: 15) {
-                                                VStack(spacing: 2) {
-                                                    Text("\(characterManager.character.totalCommits)")
-                                                        .font(.title3)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(.yellow)
-                                                    Text("総コミット数")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                                
-                                                VStack(spacing: 2) {
-                                                    Text("\(characterManager.character.consecutiveDays)")
-                                                        .font(.title3)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(.orange)
-                                                    Text("連続コミット")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                                
-                                                VStack(spacing: 2) {
-                                                    Text("\(characterManager.character.maxConsecutiveDays)")
-                                                        .font(.title3)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(.purple)
-                                                    Text("最高連続記録")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                            }
-                                            
-                                            HStack {
-                                                Text("\(settingsManager.defaultGitHubUsername)")
-                                                    .font(.caption)
-                                                    .fontWeight(.semibold)
-                                                    .foregroundColor(.blue)
-                                                Spacer()
-                                                Text("総コントリビューション: \(contributionData.totalContributions)")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                        }
-                                        
-                                        Spacer()
+                                        .padding(.horizontal)
                                     }
-                                    .padding(.horizontal)
+                                    .buttonStyle(PlainButtonStyle())
                                     
                                     // 次の成長段階への進捗
                                     if let nextStage = getNextStage() {
@@ -270,9 +288,6 @@ struct GitHubContributionsView: View {
                                 .cornerRadius(15)
                                 .shadow(radius: 2)
                                 .padding(.horizontal)
-                                .onTapGesture {
-                                    showingCharacter = true
-                                }
                             }
                             
                             // カレンダー表示エリア
@@ -409,6 +424,9 @@ struct GitHubContributionsView: View {
                     }
                     .sheet(isPresented: $showingCharacter) {
                         CharacterView(characterManager: characterManager)
+                    }
+                    .sheet(isPresented: $showingCharacterDetail) {
+                        CharacterDetailView(stage: characterManager.character.stage.rawValue)
                     }
                 }
             }
