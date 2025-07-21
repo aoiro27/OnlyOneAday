@@ -136,16 +136,18 @@ class CharacterManager: ObservableObject {
         
         var totalCommits = 0
         var lastCommitDate: Date?
+        var commitDates: [Date] = []
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         
-        // 全期間のコミット数を集計
+        // 全期間のコミット数を集計し、コミットした日付を収集
         for week in data.weeks {
             for day in week.contributionDays {
                 if day.contributionCount > 0 {
                     totalCommits += day.contributionCount
                     if let date = dateFormatter.date(from: day.date) {
+                        commitDates.append(date)
                         if lastCommitDate == nil || date > lastCommitDate! {
                             lastCommitDate = date
                         }
@@ -154,8 +156,13 @@ class CharacterManager: ObservableObject {
             }
         }
         
+        // 連続コミット日数を計算
+        let (consecutiveDays, maxConsecutiveDays) = calculateConsecutiveDays(from: commitDates)
+        
         // キャラクター状態を更新
         character.totalCommits = totalCommits
+        character.consecutiveDays = consecutiveDays
+        character.maxConsecutiveDays = maxConsecutiveDays
         if let lastCommit = lastCommitDate {
             character.lastCommitDate = lastCommit
         }
@@ -164,6 +171,53 @@ class CharacterManager: ObservableObject {
         character.updateStage()
         
         saveCharacterState()
+    }
+    
+    // 連続コミット日数を計算
+    private func calculateConsecutiveDays(from commitDates: [Date]) -> (consecutiveDays: Int, maxConsecutiveDays: Int) {
+        guard !commitDates.isEmpty else { return (0, 0) }
+        
+        let calendar = Calendar.current
+        let sortedDates = commitDates.sorted()
+        
+        var currentConsecutive = 1
+        var maxConsecutive = 1
+        var lastDate = sortedDates.first!
+        
+        for date in sortedDates.dropFirst() {
+            let days = calendar.dateComponents([.day], from: lastDate, to: date).day ?? 0
+            
+            if days == 1 {
+                // 連続日
+                currentConsecutive += 1
+                maxConsecutive = max(maxConsecutive, currentConsecutive)
+            } else if days > 1 {
+                // 連続が途切れた
+                currentConsecutive = 1
+            }
+            // days == 0 の場合は同じ日なのでスキップ
+            
+            lastDate = date
+        }
+        
+        // 現在の連続日数を計算（最新の日付から）
+        let today = Date()
+        let latestDate = sortedDates.last!
+        let daysFromLatest = calendar.dateComponents([.day], from: latestDate, to: today).day ?? 0
+        
+        let currentConsecutiveDays: Int
+        if daysFromLatest == 0 {
+            // 今日コミットした場合
+            currentConsecutiveDays = currentConsecutive
+        } else if daysFromLatest == 1 {
+            // 昨日コミットした場合
+            currentConsecutiveDays = currentConsecutive
+        } else {
+            // 連続が途切れた
+            currentConsecutiveDays = 0
+        }
+        
+        return (currentConsecutiveDays, maxConsecutive)
     }
     
     // キャラクター状態を保存
