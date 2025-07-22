@@ -110,21 +110,40 @@ struct GoalsView: View {
                         
                         // 全て達成時の報酬ボタン
                         if allGoalsCompleted {
-                            Button(action: {
-                                showingRewardAlert = true
-                            }) {
+                            let hasAnyRewardClaimed = goals.contains { $0.isRewardClaimed }
+                            
+                            if hasAnyRewardClaimed {
+                                // 既に報酬を受け取っている場合
                                 HStack {
-                                    Image(systemName: "gift.fill")
-                                    Text("全ての目標達成！報酬を受け取る")
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                    Text("今日の報酬を受け取りました！")
+                                        .font(.headline)
+                                        .foregroundColor(.green)
                                 }
-                                .font(.headline)
-                                .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.orange)
+                                .background(Color(.systemGray6))
                                 .cornerRadius(10)
+                                .padding()
+                            } else {
+                                // まだ報酬を受け取っていない場合
+                                Button(action: {
+                                    showingRewardAlert = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "gift.fill")
+                                        Text("全ての目標達成！報酬を受け取る")
+                                    }
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.orange)
+                                    .cornerRadius(10)
+                                }
+                                .padding()
                             }
-                            .padding()
                         }
                     }
                 }
@@ -157,6 +176,15 @@ struct GoalsView: View {
                     Text("全ての目標を達成しました！\n\n報酬:\n\(rewardText)\n\n今日一日お疲れさまでした。")
                 }
             }
+            .onChange(of: allGoalsCompleted) { _, newValue in
+                // 全ての目標が達成された時、既に報酬を受け取っている場合はアラートを表示しない
+                if newValue {
+                    let hasAnyRewardClaimed = goals.contains { $0.isRewardClaimed }
+                    if hasAnyRewardClaimed {
+                        showingRewardAlert = false
+                    }
+                }
+            }
         }
         .onAppear {
             loadDailyRewards()
@@ -187,6 +215,13 @@ struct GoalsView: View {
     }
     
     private func claimAllRewards() {
+        // 既に報酬を受け取っているかチェック
+        let hasAnyRewardClaimed = goals.contains { $0.isRewardClaimed }
+        if hasAnyRewardClaimed {
+            // 既に報酬を受け取っている場合は何もしない
+            return
+        }
+        
         // 全ての目標に報酬を受け取ったマークを付ける
         for goal in goals {
             goal.claimReward()
