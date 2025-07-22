@@ -153,4 +153,36 @@ class StudyManager: ObservableObject {
         modelContext.delete(session)
         try? modelContext.save()
     }
+    
+    // MARK: - カテゴリ管理
+    
+    // カテゴリを取得
+    func getCategories() -> [StudyCategory] {
+        let descriptor = FetchDescriptor<StudyCategory>(
+            sortBy: [SortDescriptor(\.createdAt)]
+        )
+        
+        guard let categories = try? modelContext.fetch(descriptor) else {
+            return []
+        }
+        return categories
+    }
+    
+    // カテゴリを追加
+    func addCategory(name: String, color: String) {
+        let category = StudyCategory(name: name, color: color)
+        modelContext.insert(category)
+        try? modelContext.save()
+    }
+    
+    // カテゴリを削除
+    func deleteCategory(_ category: StudyCategory) {
+        modelContext.delete(category)
+        try? modelContext.save()
+    }
+    
+    // カテゴリ編集を保存
+    func saveCategoryEdit() {
+        try? modelContext.save()
+    }
 } 
