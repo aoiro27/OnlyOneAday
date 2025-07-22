@@ -7,9 +7,12 @@
 
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 @main
 struct OnlyOneAdayApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             StudySession.self,
@@ -17,6 +20,7 @@ struct OnlyOneAdayApp: App {
             Goal.self,
             Reward.self,
             FamilyGoal.self,
+            Partner.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -30,6 +34,12 @@ struct OnlyOneAdayApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    // アプリ起動時に通知の許可をリクエスト
+                    Task {
+                        await NotificationManager.shared.requestAuthorization()
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
     }

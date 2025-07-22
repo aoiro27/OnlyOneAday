@@ -18,6 +18,7 @@ struct GoalsView: View {
     @State private var showingRewardAlert = false
     @State private var showingRewardSettings = false
     @State private var dailyRewards: [DailyReward] = []
+    @State private var partnerManager: PartnerManager?
     
     var completedGoals: [Goal] {
         goals.filter { $0.isCompleted }
@@ -106,6 +107,9 @@ struct GoalsView: View {
         .onAppear {
             loadDailyRewards()
             checkAndResetGoals()
+            if partnerManager == nil {
+                partnerManager = PartnerManager(modelContext: modelContext)
+            }
         }
     }
     
@@ -607,6 +611,7 @@ struct FamilyGoalProgressView: View {
 struct GoalRowView: View {
     let goal: Goal
     let modelContext: ModelContext
+    @State private var partnerManager: PartnerManager?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -642,10 +647,20 @@ struct GoalRowView: View {
             }
         }
         .padding(.vertical, 4)
+        .onAppear {
+            if partnerManager == nil {
+                partnerManager = PartnerManager(modelContext: modelContext)
+            }
+        }
     }
     
     private func completeGoal() {
         goal.complete()
+        
+        // パートナーに通知を送信
+        if let partnerManager = partnerManager {
+            partnerManager.notifyPartnerGoalCompletion(goalTitle: goal.title)
+        }
         
         do {
             try modelContext.save()
@@ -659,6 +674,7 @@ struct FamilyGoalRowView: View {
     let goal: FamilyGoal
     let modelContext: ModelContext
     @State private var showingRewardAlert = false
+    @State private var partnerManager: PartnerManager?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -721,10 +737,20 @@ struct FamilyGoalRowView: View {
         } message: {
             Text("ファミリー目標「\(goal.title)」を達成しました！\n\n報酬: 肩叩き1分\n\n家族みんなで協力してくれてありがとう！")
         }
+        .onAppear {
+            if partnerManager == nil {
+                partnerManager = PartnerManager(modelContext: modelContext)
+            }
+        }
     }
     
     private func completeGoal() {
         goal.complete()
+        
+        // ファミリー目標達成時に通知を送信
+        if let partnerManager = partnerManager {
+            partnerManager.notifyFamilyGoalCompletion(goalTitle: goal.title)
+        }
         
         do {
             try modelContext.save()

@@ -1,15 +1,45 @@
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
     @StateObject private var settingsManager = SettingsManager.shared
+    @Environment(\.modelContext) private var modelContext
+    @State private var partnerManager: PartnerManager?
     @State private var showingTokenInput = false
     @State private var tempToken = ""
     @State private var showingAlert = false
     @State private var alertMessage = ""
+    @State private var showingPartnerSettings = false
     
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("パートナー設定")) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("パートナー連携")
+                                .font(.headline)
+                            if let partner = partnerManager?.currentPartner {
+                                Text(partner.isConnected ? "\(partner.name)さんと接続中" : "\(partner.name)さんと未接続")
+                                    .font(.caption)
+                                    .foregroundColor(partner.isConnected ? .green : .orange)
+                            } else {
+                                Text("未設定")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Button("設定") {
+                            showingPartnerSettings = true
+                        }
+                        .foregroundColor(.blue)
+                    }
+                    .padding(.vertical, 4)
+                }
+                
                 Section(header: Text("GitHub設定")) {
                     // アクセストークン設定
                     HStack {
@@ -91,10 +121,20 @@ struct SettingsView: View {
                     showingAlert = true
                 })
             }
+            .sheet(isPresented: $showingPartnerSettings) {
+                if let partnerManager = partnerManager {
+                    PartnerSettingsView(partnerManager: partnerManager)
+                }
+            }
             .alert("設定", isPresented: $showingAlert) {
                 Button("OK") { }
             } message: {
                 Text(alertMessage)
+            }
+        }
+        .onAppear {
+            if partnerManager == nil {
+                partnerManager = PartnerManager(modelContext: modelContext)
             }
         }
     }
