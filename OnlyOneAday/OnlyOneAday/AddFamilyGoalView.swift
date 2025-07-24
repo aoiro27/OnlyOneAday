@@ -6,11 +6,10 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct AddFamilyGoalView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var familyGoalManager = FamilyGoalManager()
     
     @State private var title = ""
     @State private var goalDescription = ""
@@ -66,35 +65,31 @@ struct AddFamilyGoalView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("追加") {
-                        addFamilyGoal()
+                        Task {
+                            await addFamilyGoal()
+                        }
                     }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || familyGoalManager.isLoading)
                 }
             }
         }
     }
     
-    private func addFamilyGoal() {
+    private func addFamilyGoal() async {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDescription = goalDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        let familyGoal = FamilyGoal(
-            title: trimmedTitle,
-            goalDescription: trimmedDescription
-        )
+        // タイトルと説明を組み合わせてミッションを作成
+        let mission = trimmedDescription.isEmpty ? trimmedTitle : "\(trimmedTitle): \(trimmedDescription)"
         
-        modelContext.insert(familyGoal)
+        let success = await familyGoalManager.createFamilyMission(mission: mission)
         
-        do {
-            try modelContext.save()
+        if success {
             dismiss()
-        } catch {
-            print("Failed to add family goal: \(error)")
         }
     }
 }
 
 #Preview {
     AddFamilyGoalView()
-        .modelContainer(for: [FamilyGoal.self], inMemory: true)
 } 

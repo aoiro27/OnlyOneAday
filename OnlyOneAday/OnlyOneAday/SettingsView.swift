@@ -62,6 +62,31 @@ struct SettingsView: View {
                     }
                 }
                 
+                Section(header: Text("ファミリー設定")) {
+                    // ファミリーID設定
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("ファミリーID")
+                                .font(.headline)
+                            Text("家族で共有するためのIDです")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        TextField("ファミリーID", text: Binding(
+                            get: { UserDefaults.standard.string(forKey: "familyId") ?? "" },
+                            set: { UserDefaults.standard.set($0, forKey: "familyId") }
+                        ))
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .frame(width: 120)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                    }
+                    .padding(.vertical, 4)
+                }
+                
                 Section(header: Text("ヘルプ")) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Personal Access Tokenの取得方法")
