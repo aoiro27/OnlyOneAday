@@ -2,7 +2,9 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject private var settingsManager = SettingsManager.shared
+    @StateObject private var familyGoalManager = FamilyGoalManager()
     @State private var showingTokenInput = false
+    @State private var showingFamilyManagement = false
     @State private var tempToken = ""
     @State private var showingAlert = false
     @State private var alertMessage = ""
@@ -62,6 +64,35 @@ struct SettingsView: View {
                     }
                 }
                 
+                Section(header: Text("ファミリー設定")) {
+                    // ファミリー状況表示
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("ファミリー状況")
+                                .font(.headline)
+                            if familyGoalManager.isFamilyIdSet {
+                                if let status = familyGoalManager.familyStatus {
+                                    Text("ファミリーID: \(status.familyId)")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                }
+                            } else {
+                                Text("未設定")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Button("管理") {
+                            showingFamilyManagement = true
+                        }
+                        .foregroundColor(.blue)
+                    }
+                    .padding(.vertical, 4)
+                }
+                
                 Section(header: Text("ヘルプ")) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Personal Access Tokenの取得方法")
@@ -91,10 +122,21 @@ struct SettingsView: View {
                     showingAlert = true
                 })
             }
+            .sheet(isPresented: $showingFamilyManagement) {
+                FamilyManagementView()
+            }
             .alert("設定", isPresented: $showingAlert) {
                 Button("OK") { }
             } message: {
                 Text(alertMessage)
+            }
+            .onAppear {
+                familyGoalManager.checkLocalFamilyId()
+                if familyGoalManager.isFamilyIdSet {
+                    Task {
+                        await familyGoalManager.fetchFamilyStatus()
+                    }
+                }
             }
         }
     }

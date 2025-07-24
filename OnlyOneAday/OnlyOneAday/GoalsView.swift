@@ -11,7 +11,7 @@ import SwiftData
 struct GoalsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var goals: [Goal]
-    @Query private var familyGoals: [FamilyGoal]
+    @StateObject private var familyGoalManager = FamilyGoalManager()
     @State private var selectedTab = 0
     @State private var showingAddGoal = false
     @State private var lastResetDate: Date = UserDefaults.standard.object(forKey: "lastResetDate") as? Date ?? Date()
@@ -23,8 +23,8 @@ struct GoalsView: View {
         goals.filter { $0.isCompleted }
     }
     
-    var completedFamilyGoals: [FamilyGoal] {
-        familyGoals.filter { $0.isCompleted }
+    var completedFamilyGoals: [FamilyMissionResponse] {
+        familyGoalManager.completedMissions
     }
     
     var allGoalsCompleted: Bool {
@@ -32,7 +32,7 @@ struct GoalsView: View {
     }
     
     var allFamilyGoalsCompleted: Bool {
-        !familyGoals.isEmpty && familyGoals.allSatisfy { $0.isCompleted }
+        familyGoalManager.allMissionsCompleted
     }
     
     var body: some View {
@@ -60,14 +60,17 @@ struct GoalsView: View {
                     )
                 } else {
                     // ファミリー目標タブ
-                    FamilyGoalsTabView(
-                        familyGoals: familyGoals,
-                        completedFamilyGoals: completedFamilyGoals,
-                        allFamilyGoalsCompleted: allFamilyGoalsCompleted,
-                        showingAddGoal: $showingAddGoal,
-                        showingRewardAlert: $showingRewardAlert,
-                        modelContext: modelContext
-                    )
+                    if familyGoalManager.isFamilyIdSet {
+                        FamilyGoalsTabView(
+                            familyGoalManager: familyGoalManager,
+                            completedFamilyGoals: completedFamilyGoals,
+                            allFamilyGoalsCompleted: allFamilyGoalsCompleted,
+                            showingAddGoal: $showingAddGoal,
+                            showingRewardAlert: $showingRewardAlert
+                        )
+                    } else {
+                        FamilyIdNotSetView()
+                    }
                 }
             }
             .navigationTitle("毎日の目標")
@@ -84,7 +87,7 @@ struct GoalsView: View {
                 if selectedTab == 0 {
                     AddGoalView(modelContext: modelContext)
                 } else {
-                    AddFamilyGoalView()
+                    AddFamilyGoalView(familyGoalManager: familyGoalManager)
                 }
             }
             .sheet(isPresented: $showingRewardSettings) {
@@ -106,6 +109,13 @@ struct GoalsView: View {
         .onAppear {
             loadDailyRewards()
             checkAndResetGoals()
+            familyGoalManager.checkLocalFamilyId()
+            if familyGoalManager.isFamilyIdSet {
+                Task {
+                    await familyGoalManager.fetchFamilyStatus()
+                    await familyGoalManager.fetchFamilyMissions()
+                }
+            }
         }
     }
     
@@ -159,9 +169,7 @@ struct GoalsView: View {
             goal.reset()
         }
         
-        for goal in familyGoals {
-            goal.reset()
-        }
+        // ファミリー目標はAPIで管理されるため、リセット機能は不要
         
         do {
             try modelContext.save()
@@ -353,16 +361,15 @@ struct PersonalGoalsTabView: View {
 
 // ファミリー目標タブビュー
 struct FamilyGoalsTabView: View {
-    let familyGoals: [FamilyGoal]
-    let completedFamilyGoals: [FamilyGoal]
+    @ObservedObject var familyGoalManager: FamilyGoalManager
+    let completedFamilyGoals: [FamilyMissionResponse]
     let allFamilyGoalsCompleted: Bool
     @Binding var showingAddGoal: Bool
     @Binding var showingRewardAlert: Bool
-    let modelContext: ModelContext
     
     var body: some View {
         VStack {
-            if familyGoals.isEmpty {
+            if familyGoalManager.familyMissions.isEmpty {
                 VStack(spacing: 20) {
                     Image(systemName: "house.fill")
                         .font(.system(size: 60))
@@ -393,7 +400,7 @@ struct FamilyGoalsTabView: View {
             } else {
                 VStack {
                     // 進捗表示
-                    FamilyGoalProgressView(completedGoals: completedFamilyGoals, totalGoals: familyGoals.count)
+                    FamilyGoalProgressView(completedGoals: completedFamilyGoals, totalGoals: familyGoalManager.familyMissions.count)
                     
                     // 報酬表示
                     VStack(spacing: 8) {
@@ -418,15 +425,16 @@ struct FamilyGoalsTabView: View {
                     .padding(.horizontal)
                     
                     List {
-                        ForEach(familyGoals) { goal in
-                            FamilyGoalRowView(goal: goal, modelContext: modelContext)
+                        ForEach(familyGoalManager.familyMissions, id: \.docId) { mission in
+                            FamilyMissionRowView(mission: mission, familyGoalManager: familyGoalManager)
                                 .swipeActions(edge: .trailing) {
                                     Button("削除", role: .destructive) {
-                                        deleteGoal(goal)
+                                        Task {
+                                            await deleteMission(mission)
+                                        }
                                     }
                                 }
                         }
-                        .onDelete(perform: deleteGoals)
                     }
                     
 
@@ -435,25 +443,11 @@ struct FamilyGoalsTabView: View {
         }
     }
     
-    private func deleteGoal(_ goal: FamilyGoal) {
-        modelContext.delete(goal)
+    private func deleteMission(_ mission: FamilyMissionResponse) async {
+        let success = await familyGoalManager.deleteFamilyMission(docId: mission.docId)
         
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to delete family goal: \(error)")
-        }
-    }
-    
-    private func deleteGoals(offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(familyGoals[index])
-        }
-        
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to delete family goal: \(error)")
+        if !success {
+            print("Failed to delete family mission")
         }
     }
 }
@@ -571,7 +565,7 @@ struct GoalProgressView: View {
 }
 
 struct FamilyGoalProgressView: View {
-    let completedGoals: [FamilyGoal]
+    let completedGoals: [FamilyMissionResponse]
     let totalGoals: Int
     
     var progress: Double {
@@ -655,31 +649,28 @@ struct GoalRowView: View {
     }
 }
 
-struct FamilyGoalRowView: View {
-    let goal: FamilyGoal
-    let modelContext: ModelContext
+struct FamilyMissionRowView: View {
+    let mission: FamilyMissionResponse
+    @ObservedObject var familyGoalManager: FamilyGoalManager
+    @Environment(\.modelContext) private var modelContext
     @State private var showingRewardAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(goal.title)
+                    Text(mission.mission)
                         .font(.headline)
-                    
-                    if !goal.goalDescription.isEmpty {
-                        Text(goal.goalDescription)
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                    }
                 }
                 
                 Spacer()
                 
                 VStack(spacing: 8) {
-                    if !goal.isCompleted {
+                    if !mission.isCleared {
                         Button(action: {
-                            completeGoal()
+                            Task {
+                                await completeMission()
+                            }
                         }) {
                             Image(systemName: "checkmark.circle")
                                 .font(.title2)
@@ -691,23 +682,9 @@ struct FamilyGoalRowView: View {
                                 .font(.title2)
                                 .foregroundColor(.green)
                             
-                            if !goal.isRewardClaimed {
-                                Button(action: {
-                                    showingRewardAlert = true
-                                }) {
-                                    Text("報酬")
-                                        .font(.caption)
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.orange)
-                                        .cornerRadius(8)
-                                }
-                            } else {
-                                Text("完了")
-                                    .font(.caption)
-                                    .foregroundColor(.green)
-                            }
+                            Text("完了")
+                                .font(.caption)
+                                .foregroundColor(.green)
                         }
                     }
                 }
@@ -715,41 +692,90 @@ struct FamilyGoalRowView: View {
         }
         .padding(.vertical, 4)
         .alert("おめでとうございます！", isPresented: $showingRewardAlert) {
-            Button("肩叩き1分を受け取る") {
-                claimReward()
-            }
+            Button("OK") { }
         } message: {
-            Text("ファミリー目標「\(goal.title)」を達成しました！\n\n報酬: 肩叩き1分\n\n家族みんなで協力してくれてありがとう！")
+            Text("ファミリー目標「\(mission.mission)」を達成しました！\n\n報酬: 肩叩き1分\n\n家族みんなで協力してくれてありがとう！")
         }
     }
     
-    private func completeGoal() {
-        goal.complete()
+    private func completeMission() async {
+        let success = await familyGoalManager.updateFamilyMission(
+            docId: mission.docId,
+            mission: mission.mission,
+            isCleared: true
+        )
         
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to complete family goal: \(error)")
+        if success {
+            // 報酬を自動的に付与
+            claimReward()
+            showingRewardAlert = true
+        } else {
+            print("Failed to complete family mission")
         }
     }
     
     private func claimReward() {
-        // 報酬を受け取ったマークを付ける
-        goal.claimReward()
+        // 既に同じ目標の報酬が存在するかチェック
+        let existingRewards = try? modelContext.fetch(FetchDescriptor<Reward>())
+        let hasExistingReward = existingRewards?.contains { $0.goalTitle == mission.mission } ?? false
+        
+        if hasExistingReward {
+            print("Reward already claimed for mission: \(mission.mission)")
+            return
+        }
         
         // ファミリー報酬を作成
         let reward = Reward(
             title: "肩叩き券",
-            rewardDescription: "ファミリー目標「\(goal.title)」を達成して獲得した報酬です。家族みんなで協力してくれてありがとう！",
+            rewardDescription: "ファミリー目標「\(mission.mission)」を達成して獲得した報酬です。家族みんなで協力してくれてありがとう！",
             minutes: 1,
-            goalTitle: goal.title
+            goalTitle: mission.mission
         )
+        
         modelContext.insert(reward)
         
         do {
             try modelContext.save()
         } catch {
             print("Failed to claim family reward: \(error)")
+        }
+    }
+}
+
+// ファミリーID未設定時のビュー
+struct FamilyIdNotSetView: View {
+    @State private var showingFamilyManagement = false
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "house.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.blue)
+            
+            Text("ファミリー設定が完了していません")
+                .font(.title2)
+                .foregroundColor(.gray)
+            
+            Text("ファミリー目標を使用するには、ファミリーを作成するか既存のファミリーに参加してください。")
+                .font(.body)
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            
+            Button(action: {
+                showingFamilyManagement = true
+            }) {
+                Text("ファミリー管理")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(10)
+            }
+        }
+        .padding()
+        .sheet(isPresented: $showingFamilyManagement) {
+            FamilyManagementView()
         }
     }
 }
