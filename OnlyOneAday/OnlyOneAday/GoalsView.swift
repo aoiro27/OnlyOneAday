@@ -11,7 +11,7 @@ import SwiftData
 struct GoalsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var goals: [Goal]
-    @StateObject private var familyGoalManager = FamilyGoalManager()
+    @EnvironmentObject var familyGoalManager: FamilyGoalManager
     @State private var selectedTab = 0
     @State private var showingAddGoal = false
     @State private var lastResetDate: Date = UserDefaults.standard.object(forKey: "lastResetDate") as? Date ?? Date()
@@ -58,6 +58,7 @@ struct GoalsView: View {
                         dailyRewards: $dailyRewards,
                         modelContext: modelContext
                     )
+                    .environmentObject(familyGoalManager)
                 } else {
                     // ファミリー目標タブ
                     if familyGoalManager.isFamilyIdSet {
@@ -211,6 +212,7 @@ struct PersonalGoalsTabView: View {
     @Binding var showingRewardSettings: Bool
     @Binding var dailyRewards: [DailyReward]
     let modelContext: ModelContext
+    @EnvironmentObject var familyGoalManager: FamilyGoalManager
     
     var body: some View {
         VStack {
