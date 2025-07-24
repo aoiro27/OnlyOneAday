@@ -35,6 +35,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         print("📱 デバイストークン取得成功:")
         print("Token: \(tokenString)")
         print("Token Length: \(deviceToken.count) bytes")
+        
+        // SettingsManagerにデバイストークンを保存
+        SettingsManager.shared.deviceToken = tokenString
     }
     
     // デバイストークンの取得失敗時

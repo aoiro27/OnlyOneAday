@@ -292,6 +292,11 @@ struct CreateFamilyView: View {
             // ファミリー状況を更新
             familyGoalManager.familyStatus = status
             familyGoalManager.isFamilyIdSet = true
+            
+            // デバイストークンが取得できている場合は更新
+            if SettingsManager.shared.hasDeviceToken() {
+                await familyGoalManager.updateDeviceToken()
+            }
         }
         
         isLoading = false
@@ -419,6 +424,11 @@ struct JoinFamilyView: View {
             // ファミリー状況を更新
             familyGoalManager.familyStatus = status
             familyGoalManager.isFamilyIdSet = true
+            
+            // デバイストークンが取得できている場合は更新
+            if SettingsManager.shared.hasDeviceToken() {
+                await familyGoalManager.updateDeviceToken()
+            }
         } else {
             errorMessage = "ファミリーへの参加に失敗しました。ファミリーIDを確認してください。"
             showingError = true

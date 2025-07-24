@@ -11,6 +11,8 @@ import SwiftData
 @main
 struct OnlyOneAdayApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var familyGoalManager = FamilyGoalManager()
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             StudySession.self,
@@ -30,6 +32,20 @@ struct OnlyOneAdayApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(familyGoalManager)
+                .onAppear {
+                    // アプリ起動時にファミリー状況を確認し、デバイストークンを更新
+                    Task {
+                        familyGoalManager.checkLocalFamilyId()
+                        if familyGoalManager.isFamilyIdSet {
+                            await familyGoalManager.fetchFamilyStatus()
+                            // デバイストークンが取得できている場合は更新
+                            if SettingsManager.shared.hasDeviceToken() {
+                                await familyGoalManager.updateDeviceToken()
+                            }
+                        }
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
     }

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject private var settingsManager = SettingsManager.shared
-    @StateObject private var familyGoalManager = FamilyGoalManager()
+    @EnvironmentObject var familyGoalManager: FamilyGoalManager
     @State private var showingTokenInput = false
     @State private var showingFamilyManagement = false
     @State private var tempToken = ""
@@ -135,6 +135,10 @@ struct SettingsView: View {
                 if familyGoalManager.isFamilyIdSet {
                     Task {
                         await familyGoalManager.fetchFamilyStatus()
+                        // デバイストークンが取得できている場合は更新
+                        if SettingsManager.shared.hasDeviceToken() {
+                            await familyGoalManager.updateDeviceToken()
+                        }
                     }
                 }
             }

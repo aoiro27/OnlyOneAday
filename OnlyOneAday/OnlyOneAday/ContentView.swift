@@ -10,6 +10,7 @@ import SwiftData
 
 struct ContentView: View {
     @State private var selectedTab = 0
+    @EnvironmentObject var familyGoalManager: FamilyGoalManager
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -54,4 +55,5 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .modelContainer(for: [StudySession.self, Goal.self, Reward.self], inMemory: true)
+        .environmentObject(FamilyGoalManager())
 }
