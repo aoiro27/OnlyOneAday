@@ -11,6 +11,8 @@ import SwiftUI
 @MainActor
 class FamilyGoalManager: ObservableObject {
     @Published var familyMissions: [FamilyMissionResponse] = []
+    @Published var familyMembers: [FamilyMemberInfo] = []
+    @Published var familyStatus: FamilyStatusInfo?
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var isFamilyIdSet: Bool = false
@@ -18,21 +20,34 @@ class FamilyGoalManager: ObservableObject {
     private let api = FamilyGoalAPI()
     
     init() {
-        checkFamilyId()
+        // 初期化時はローカルチェックのみ
+        checkLocalFamilyId()
     }
     
-    func checkFamilyId() {
+    func checkLocalFamilyId() {
         let familyId = UserDefaults.standard.string(forKey: "familyId")
         let userName = UserDefaults.standard.string(forKey: "userName")
         isFamilyIdSet = familyId != nil && !familyId!.isEmpty && userName != nil && !userName!.isEmpty
     }
     
+    // サーバーからファミリー状況を取得
+    func fetchFamilyStatus() async {
+        do {
+            familyStatus = try await api.getFamilyStatus()
+            isFamilyIdSet = familyStatus != nil
+        } catch {
+            errorMessage = error.localizedDescription
+            print("Failed to fetch family status: \(error)")
+            isFamilyIdSet = false
+        }
+    }
+    
     // ファミリー目標を取得
     func fetchFamilyMissions() async {
-        checkFamilyId()
+        checkLocalFamilyId()
         
         if !isFamilyIdSet {
-            errorMessage = "名前とファミリーIDが設定されていません"
+            errorMessage = "ファミリーに参加していません"
             return
         }
         
@@ -146,5 +161,103 @@ class FamilyGoalManager: ObservableObject {
     var progress: Double {
         guard !familyMissions.isEmpty else { return 0 }
         return Double(completedMissions.count) / Double(familyMissions.count)
+    }
+    
+    // ファミリー作成（ファミリーIDを生成してメンバーを追加）
+    func createFamily(userName: String) async -> FamilyStatusInfo? {
+        // ファミリーIDを生成（UUIDベース）
+        let familyId = UUID().uuidString.prefix(8).uppercased()
+        
+        do {
+            let response = try await api.addFamilyMember(
+                familyId: String(familyId),
+                name: userName
+            )
+            
+            // ファミリー状況を作成
+            let status = FamilyStatusInfo(
+                familyId: String(familyId),
+                memberId: response.memberId,
+                name: userName
+            )
+            
+            // ローカルにユーザー名とファミリーIDを保存
+            UserDefaults.standard.set(userName, forKey: "userName")
+            UserDefaults.standard.set(String(familyId), forKey: "familyId")
+            
+            return status
+        } catch {
+            errorMessage = error.localizedDescription
+            print("Failed to create family: \(error)")
+            return nil
+        }
+    }
+    
+    // ファミリー参加
+    func joinFamily(userName: String, familyId: String) async -> FamilyStatusInfo? {
+        do {
+            let response = try await api.addFamilyMember(
+                familyId: familyId,
+                name: userName
+            )
+            
+            // ファミリー状況を作成
+            let status = FamilyStatusInfo(
+                familyId: familyId,
+                memberId: response.memberId,
+                name: userName
+            )
+            
+            // ローカルにユーザー名とファミリーIDを保存
+            UserDefaults.standard.set(userName, forKey: "userName")
+            UserDefaults.standard.set(familyId, forKey: "familyId")
+            
+            return status
+        } catch {
+            errorMessage = error.localizedDescription
+            print("Failed to join family: \(error)")
+            return nil
+        }
+    }
+    
+    // ファミリー脱退
+    func leaveFamily() async -> Bool {
+        guard let status = familyStatus else {
+            errorMessage = "ファミリー状況が取得できません"
+            return false
+        }
+        
+        do {
+            let response = try await api.removeFamilyMember(
+                familyId: status.familyId,
+                memberId: status.memberId
+            )
+            
+            // ローカルからファミリー情報を削除
+            UserDefaults.standard.removeObject(forKey: "userName")
+            UserDefaults.standard.removeObject(forKey: "familyId")
+            familyStatus = nil
+            isFamilyIdSet = false
+            
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            print("Failed to leave family: \(error)")
+            return false
+        }
+    }
+    
+    // ファミリーメンバー一覧取得
+    func fetchFamilyMembers() async {
+        guard let status = familyStatus else {
+            return
+        }
+        
+        do {
+            familyMembers = try await api.getFamilyMembers(familyId: status.familyId)
+        } catch {
+            errorMessage = error.localizedDescription
+            print("Failed to fetch family members: \(error)")
+        }
     }
 } 

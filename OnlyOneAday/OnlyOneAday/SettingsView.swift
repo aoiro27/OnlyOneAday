@@ -2,7 +2,9 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject private var settingsManager = SettingsManager.shared
+    @StateObject private var familyGoalManager = FamilyGoalManager()
     @State private var showingTokenInput = false
+    @State private var showingFamilyManagement = false
     @State private var tempToken = ""
     @State private var showingAlert = false
     @State private var alertMessage = ""
@@ -63,47 +65,30 @@ struct SettingsView: View {
                 }
                 
                 Section(header: Text("ファミリー設定")) {
-                    // 名前設定
+                    // ファミリー状況表示
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("名前")
+                            Text("ファミリー状況")
                                 .font(.headline)
-                            Text("家族内での表示名です")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            if familyGoalManager.isFamilyIdSet {
+                                if let status = familyGoalManager.familyStatus {
+                                    Text("ファミリーID: \(status.familyId)")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                }
+                            } else {
+                                Text("未設定")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
                         }
                         
                         Spacer()
                         
-                        TextField("名前", text: Binding(
-                            get: { UserDefaults.standard.string(forKey: "userName") ?? "" },
-                            set: { UserDefaults.standard.set($0, forKey: "userName") }
-                        ))
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .frame(width: 120)
-                    }
-                    .padding(.vertical, 4)
-                    
-                    // ファミリーID設定
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("ファミリーID")
-                                .font(.headline)
-                            Text("家族で共有するためのIDです")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        Button("管理") {
+                            showingFamilyManagement = true
                         }
-                        
-                        Spacer()
-                        
-                        TextField("ファミリーID", text: Binding(
-                            get: { UserDefaults.standard.string(forKey: "familyId") ?? "" },
-                            set: { UserDefaults.standard.set($0, forKey: "familyId") }
-                        ))
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .frame(width: 120)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
+                        .foregroundColor(.blue)
                     }
                     .padding(.vertical, 4)
                 }
@@ -137,10 +122,21 @@ struct SettingsView: View {
                     showingAlert = true
                 })
             }
+            .sheet(isPresented: $showingFamilyManagement) {
+                FamilyManagementView()
+            }
             .alert("設定", isPresented: $showingAlert) {
                 Button("OK") { }
             } message: {
                 Text(alertMessage)
+            }
+            .onAppear {
+                familyGoalManager.checkLocalFamilyId()
+                if familyGoalManager.isFamilyIdSet {
+                    Task {
+                        await familyGoalManager.fetchFamilyStatus()
+                    }
+                }
             }
         }
     }

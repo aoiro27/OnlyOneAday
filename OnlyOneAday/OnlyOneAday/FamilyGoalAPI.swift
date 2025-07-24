@@ -76,9 +76,54 @@ struct UpdateFamilyMissionRequest: Codable {
     }
 }
 
+// ファミリーメンバー管理用のリクエスト構造体
+struct FamilyMemberRequest: Codable {
+    let name: String
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+    }
+}
+
+// ファミリーメンバー管理用のレスポンス構造体
+struct FamilyMemberResponse: Codable {
+    let result: String
+    let memberId: String
+    
+    enum CodingKeys: String, CodingKey {
+        case result
+        case memberId
+    }
+}
+
+// ファミリーメンバー情報構造体
+struct FamilyMemberInfo: Codable {
+    let name: String
+    let memberId: String
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case memberId
+    }
+}
+
+// ファミリー状況情報構造体
+struct FamilyStatusInfo: Codable {
+    let familyId: String
+    let memberId: String
+    let name: String
+    
+    enum CodingKeys: String, CodingKey {
+        case familyId = "familyId"
+        case memberId = "memberId"
+        case name
+    }
+}
+
 // APIクライアントクラス
 class FamilyGoalAPI {
     private let baseURL = "https://update-family-mission-488889291017.asia-northeast1.run.app"
+    private let familyManagementURL = "https://management-family-488889291017.asia-northeast1.run.app"
     
     // ファミリーID（設定から取得）
     private var familyId: String? {
@@ -242,6 +287,110 @@ class FamilyGoalAPI {
                 print("API Response: \(responseString)")
             }
             throw APIError.decodingError(error)
+        }
+    }
+    
+    // ファミリーメンバー追加（ファミリー作成・参加）
+    func addFamilyMember(familyId: String, name: String) async throws -> FamilyMemberResponse {
+        guard let url = URL(string: "\(familyManagementURL)/members?familyId=\(familyId)") else {
+            throw APIError.invalidURL
+        }
+        
+        let request = FamilyMemberRequest(name: name)
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            urlRequest.httpBody = try JSONEncoder().encode(request)
+        } catch {
+            throw APIError.encodingError(error)
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+        
+        do {
+            let memberResponse = try JSONDecoder().decode(FamilyMemberResponse.self, from: data)
+            return memberResponse
+        } catch {
+            throw APIError.decodingError(error)
+        }
+    }
+    
+    // ファミリーメンバー削除（ファミリー脱退）
+    func removeFamilyMember(familyId: String, memberId: String) async throws -> FamilyMemberResponse {
+        guard let url = URL(string: "\(familyManagementURL)/members?familyId=\(familyId)&memberId=\(memberId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "DELETE"
+        
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+        
+        do {
+            let memberResponse = try JSONDecoder().decode(FamilyMemberResponse.self, from: data)
+            return memberResponse
+        } catch {
+            throw APIError.decodingError(error)
+        }
+    }
+    
+    // ファミリーメンバー一覧取得
+    func getFamilyMembers(familyId: String) async throws -> [FamilyMemberInfo] {
+        guard let url = URL(string: "\(familyManagementURL)/members?familyId=\(familyId)") else {
+            throw APIError.invalidURL
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+        
+        do {
+            let members = try JSONDecoder().decode([FamilyMemberInfo].self, from: data)
+            return members
+        } catch {
+            throw APIError.decodingError(error)
+        }
+    }
+    
+    // ファミリー状況取得（ローカルに保存されたfamilyIdを使用）
+    func getFamilyStatus() async throws -> FamilyStatusInfo? {
+        guard let familyId = UserDefaults.standard.string(forKey: "familyId") else {
+            return nil
+        }
+        
+        let members = try await getFamilyMembers(familyId: familyId)
+        // 最初のメンバーをファミリー状況として返す（簡易実装）
+        return members.first.map { member in
+            FamilyStatusInfo(
+                familyId: familyId,
+                memberId: member.memberId,
+                name: member.name
+            )
         }
     }
 }

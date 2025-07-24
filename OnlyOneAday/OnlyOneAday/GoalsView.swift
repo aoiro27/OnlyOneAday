@@ -87,7 +87,7 @@ struct GoalsView: View {
                 if selectedTab == 0 {
                     AddGoalView(modelContext: modelContext)
                 } else {
-                    AddFamilyGoalView()
+                    AddFamilyGoalView(familyGoalManager: familyGoalManager)
                 }
             }
             .sheet(isPresented: $showingRewardSettings) {
@@ -109,9 +109,10 @@ struct GoalsView: View {
         .onAppear {
             loadDailyRewards()
             checkAndResetGoals()
-            familyGoalManager.checkFamilyId()
+            familyGoalManager.checkLocalFamilyId()
             if familyGoalManager.isFamilyIdSet {
                 Task {
+                    await familyGoalManager.fetchFamilyStatus()
                     await familyGoalManager.fetchFamilyMissions()
                 }
             }
@@ -743,6 +744,8 @@ struct FamilyMissionRowView: View {
 
 // ファミリーID未設定時のビュー
 struct FamilyIdNotSetView: View {
+    @State private var showingFamilyManagement = false
+    
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "house.fill")
@@ -753,14 +756,16 @@ struct FamilyIdNotSetView: View {
                 .font(.title2)
                 .foregroundColor(.gray)
             
-            Text("ファミリー目標を使用するには、設定画面で名前とファミリーIDを設定してください。")
+            Text("ファミリー目標を使用するには、ファミリーを作成するか既存のファミリーに参加してください。")
                 .font(.body)
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
             
-            NavigationLink(destination: SettingsView()) {
-                Text("設定画面を開く")
+            Button(action: {
+                showingFamilyManagement = true
+            }) {
+                Text("ファミリー管理")
                     .font(.headline)
                     .foregroundColor(.white)
                     .padding()
@@ -769,6 +774,9 @@ struct FamilyIdNotSetView: View {
             }
         }
         .padding()
+        .sheet(isPresented: $showingFamilyManagement) {
+            FamilyManagementView()
+        }
     }
 }
 

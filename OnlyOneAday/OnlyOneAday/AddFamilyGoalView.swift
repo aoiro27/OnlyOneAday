@@ -9,7 +9,7 @@ import SwiftUI
 
 struct AddFamilyGoalView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var familyGoalManager = FamilyGoalManager()
+    @ObservedObject var familyGoalManager: FamilyGoalManager
     
     @State private var title = ""
     @State private var goalDescription = ""
@@ -85,11 +85,13 @@ struct AddFamilyGoalView: View {
         let success = await familyGoalManager.createFamilyMission(mission: mission)
         
         if success {
+            // ファミリー目標一覧を再取得
+            await familyGoalManager.fetchFamilyMissions()
             dismiss()
         }
     }
 }
 
 #Preview {
-    AddFamilyGoalView()
+    AddFamilyGoalView(familyGoalManager: FamilyGoalManager())
 } 
