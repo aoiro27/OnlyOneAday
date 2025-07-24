@@ -601,6 +601,7 @@ struct FamilyGoalProgressView: View {
 struct GoalRowView: View {
     let goal: Goal
     let modelContext: ModelContext
+    @EnvironmentObject var familyGoalManager: FamilyGoalManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -621,7 +622,9 @@ struct GoalRowView: View {
                 VStack(spacing: 8) {
                     if !goal.isCompleted {
                         Button(action: {
-                            completeGoal()
+                            Task {
+                                await completeGoal()
+                            }
                         }) {
                             Image(systemName: "checkmark.circle")
                                 .font(.title2)
@@ -638,11 +641,16 @@ struct GoalRowView: View {
         .padding(.vertical, 4)
     }
     
-    private func completeGoal() {
+    private func completeGoal() async {
         goal.complete()
         
         do {
             try modelContext.save()
+            
+            // ファミリーに参加している場合はプッシュ通知を送信
+            if familyGoalManager.isFamilyIdSet {
+                await familyGoalManager.sendGoalAchievementNotification(goalTitle: goal.title)
+            }
         } catch {
             print("Failed to complete goal: \(error)")
         }
@@ -709,6 +717,9 @@ struct FamilyMissionRowView: View {
             // 報酬を自動的に付与
             claimReward()
             showingRewardAlert = true
+            
+            // ファミリーメンバーにプッシュ通知を送信
+            await familyGoalManager.sendGoalAchievementNotification(goalTitle: mission.mission)
         } else {
             print("Failed to complete family mission")
         }

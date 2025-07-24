@@ -454,6 +454,49 @@ class FamilyGoalAPI {
             )
         }
     }
+    
+    // 目標達成時にファミリーメンバーにプッシュ通知を送信
+    func sendGoalAchievementNotification(familyId: String, memberId: String, memberName: String, goalTitle: String) async throws -> Bool {
+        let pushNotificationURL = "https://push-notification-488889291017.asia-northeast1.run.app/send_family_goal_notification"
+        
+        guard let url = URL(string: pushNotificationURL) else {
+            throw APIError.invalidURL
+        }
+        
+        let requestData: [String: Any] = [
+            "familyId": familyId,
+            "memberId": memberId,
+            "memberName": memberName,
+            "goalTitle": goalTitle
+        ]
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            urlRequest.httpBody = try JSONSerialization.data(withJSONObject: requestData)
+        } catch {
+            throw APIError.encodingError(error)
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+        
+        // レスポンスを確認（成功かどうか）
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("Push notification response: \(responseString)")
+        }
+        
+        return true
+    }
 }
 
 // APIエラー定義
