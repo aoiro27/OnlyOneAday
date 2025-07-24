@@ -12,7 +12,6 @@ def family_members_handler(request):
         # familyId, memberId の取得（クエリ or JSONボディ）
         family_id = request.args.get('familyId')
         member_id = request.args.get('memberId')
-@
         if not family_id and request.method in ['POST', 'PUT', 'DELETE']:
             data = request.get_json(silent=True)
             family_id = data.get('familyId') if data else None
@@ -30,13 +29,23 @@ def family_members_handler(request):
                 return ('No JSON payload provided', 400)
 
             name = data.get('name')
+            device_token = data.get('deviceToken')  # deviceTokenパラメータを取得
 
             if not isinstance(name, str):
                 return ('name must be a string', 400)
 
-            doc_ref = db.collection(collection_path).add({
+            # 作成データを準備
+            create_data = {
                 'name': name
-            })
+            }
+            
+            # deviceTokenが提供されている場合は追加
+            if device_token is not None:
+                if not isinstance(device_token, str):
+                    return ('deviceToken must be a string', 400)
+                create_data['deviceToken'] = device_token
+
+            doc_ref = db.collection(collection_path).add(create_data)
             response = {
                 'result': 'created',
                 'memberId': doc_ref[1].id
@@ -48,9 +57,19 @@ def family_members_handler(request):
             if not data:
                 return ('No JSON payload provided', 400)
 
+            # デバッグ情報を出力
+            print(f"🔧 PUT リクエスト デバッグ情報:")
+            print(f"  - family_id: {family_id}")
+            print(f"  - member_id (from args): {member_id}")
+            print(f"  - data: {data}")
+            
             member_id = member_id or data.get('memberId')
             name = data.get('name')
             device_token = data.get('deviceToken')  # deviceTokenパラメータを取得
+            
+            print(f"  - member_id (final): {member_id}")
+            print(f"  - name: {name}")
+            print(f"  - device_token: {device_token}")
 
             if not isinstance(member_id, str):
                 return ('memberId must be provided as a string for update', 400)
@@ -63,8 +82,7 @@ def family_members_handler(request):
 
             # 更新データを準備
             update_data = {
-                'name': name,
-                'deviceToken': device_token
+                'name': name
             }
             
             # deviceTokenが提供されている場合は追加

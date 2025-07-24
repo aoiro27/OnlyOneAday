@@ -79,9 +79,11 @@ struct UpdateFamilyMissionRequest: Codable {
 // ファミリーメンバー管理用のリクエスト構造体
 struct FamilyMemberRequest: Codable {
     let name: String
+    let deviceToken: String?
     
     enum CodingKeys: String, CodingKey {
         case name
+        case deviceToken
     }
 }
 
@@ -296,7 +298,10 @@ class FamilyGoalAPI {
             throw APIError.invalidURL
         }
         
-        let request = FamilyMemberRequest(name: name)
+        // SettingsManagerからデバイストークンを取得
+        let deviceToken = SettingsManager.shared.deviceToken.isEmpty ? nil : SettingsManager.shared.deviceToken
+        
+        let request = FamilyMemberRequest(name: name, deviceToken: deviceToken)
         
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
@@ -334,6 +339,62 @@ class FamilyGoalAPI {
         
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "DELETE"
+        
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+        
+        do {
+            let memberResponse = try JSONDecoder().decode(FamilyMemberResponse.self, from: data)
+            return memberResponse
+        } catch {
+            throw APIError.decodingError(error)
+        }
+    }
+    
+    // ファミリーメンバー更新（デバイストークン更新など）
+    func updateFamilyMember(familyId: String, memberId: String, name: String) async throws -> FamilyMemberResponse {
+        guard let url = URL(string: "\(familyManagementURL)/members?familyId=\(familyId)") else {
+            throw APIError.invalidURL
+        }
+        
+        // SettingsManagerからデバイストークンを取得
+        let deviceToken = SettingsManager.shared.deviceToken.isEmpty ? nil : SettingsManager.shared.deviceToken
+        
+        // PUTメソッドではmemberIdもリクエストボディに含める必要がある
+        var requestData: [String: Any] = [
+            "name": name,
+            "memberId": memberId
+        ]
+        
+        if let deviceToken = deviceToken {
+            requestData["deviceToken"] = deviceToken
+        }
+        
+        // デバッグ情報を出力
+        print("🔧 デバッグ情報:")
+        print("  - URL: \(url)")
+        print("  - familyId: \(familyId)")
+        print("  - memberId: \(memberId)")
+        print("  - name: \(name)")
+        print("  - deviceToken: \(deviceToken ?? "nil")")
+        print("  - requestData: \(requestData)")
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "PUT"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            urlRequest.httpBody = try JSONSerialization.data(withJSONObject: requestData)
+        } catch {
+            throw APIError.encodingError(error)
+        }
         
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
         
@@ -392,6 +453,49 @@ class FamilyGoalAPI {
                 name: member.name
             )
         }
+    }
+    
+    // 目標達成時にファミリーメンバーにプッシュ通知を送信
+    func sendGoalAchievementNotification(familyId: String, memberId: String, memberName: String, goalTitle: String) async throws -> Bool {
+        let pushNotificationURL = "https://push-notification-488889291017.asia-northeast1.run.app/send_family_goal_notification"
+        
+        guard let url = URL(string: pushNotificationURL) else {
+            throw APIError.invalidURL
+        }
+        
+        let requestData: [String: Any] = [
+            "familyId": familyId,
+            "memberId": memberId,
+            "memberName": memberName,
+            "goalTitle": goalTitle
+        ]
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            urlRequest.httpBody = try JSONSerialization.data(withJSONObject: requestData)
+        } catch {
+            throw APIError.encodingError(error)
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+        
+        // レスポンスを確認（成功かどうか）
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("Push notification response: \(responseString)")
+        }
+        
+        return true
     }
 }
 

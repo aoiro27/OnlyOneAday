@@ -11,7 +11,7 @@ import SwiftData
 struct GoalsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var goals: [Goal]
-    @StateObject private var familyGoalManager = FamilyGoalManager()
+    @EnvironmentObject var familyGoalManager: FamilyGoalManager
     @State private var selectedTab = 0
     @State private var showingAddGoal = false
     @State private var lastResetDate: Date = UserDefaults.standard.object(forKey: "lastResetDate") as? Date ?? Date()
@@ -58,6 +58,7 @@ struct GoalsView: View {
                         dailyRewards: $dailyRewards,
                         modelContext: modelContext
                     )
+                    .environmentObject(familyGoalManager)
                 } else {
                     // ファミリー目標タブ
                     if familyGoalManager.isFamilyIdSet {
@@ -211,6 +212,7 @@ struct PersonalGoalsTabView: View {
     @Binding var showingRewardSettings: Bool
     @Binding var dailyRewards: [DailyReward]
     let modelContext: ModelContext
+    @EnvironmentObject var familyGoalManager: FamilyGoalManager
     
     var body: some View {
         VStack {
@@ -601,6 +603,7 @@ struct FamilyGoalProgressView: View {
 struct GoalRowView: View {
     let goal: Goal
     let modelContext: ModelContext
+    @EnvironmentObject var familyGoalManager: FamilyGoalManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -621,7 +624,9 @@ struct GoalRowView: View {
                 VStack(spacing: 8) {
                     if !goal.isCompleted {
                         Button(action: {
-                            completeGoal()
+                            Task {
+                                await completeGoal()
+                            }
                         }) {
                             Image(systemName: "checkmark.circle")
                                 .font(.title2)
@@ -638,11 +643,16 @@ struct GoalRowView: View {
         .padding(.vertical, 4)
     }
     
-    private func completeGoal() {
+    private func completeGoal() async {
         goal.complete()
         
         do {
             try modelContext.save()
+            
+            // ファミリーに参加している場合はプッシュ通知を送信
+            if familyGoalManager.isFamilyIdSet {
+                await familyGoalManager.sendGoalAchievementNotification(goalTitle: goal.title)
+            }
         } catch {
             print("Failed to complete goal: \(error)")
         }
@@ -709,6 +719,9 @@ struct FamilyMissionRowView: View {
             // 報酬を自動的に付与
             claimReward()
             showingRewardAlert = true
+            
+            // ファミリーメンバーにプッシュ通知を送信
+            await familyGoalManager.sendGoalAchievementNotification(goalTitle: mission.mission)
         } else {
             print("Failed to complete family mission")
         }

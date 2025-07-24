@@ -260,4 +260,56 @@ class FamilyGoalManager: ObservableObject {
             print("Failed to fetch family members: \(error)")
         }
     }
+    
+    // デバイストークンを更新
+    func updateDeviceToken() async -> Bool {
+        guard let status = familyStatus else {
+            errorMessage = "ファミリー状況が取得できません"
+            return false
+        }
+        
+        guard SettingsManager.shared.hasDeviceToken() else {
+            errorMessage = "デバイストークンが取得できていません"
+            return false
+        }
+        
+        do {
+            let response = try await api.updateFamilyMember(
+                familyId: status.familyId,
+                memberId: status.memberId,
+                name: status.name
+            )
+            
+            print("デバイストークンの更新が完了しました")
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            print("Failed to update device token: \(error)")
+            return false
+        }
+    }
+    
+    // 目標達成時にファミリーメンバーにプッシュ通知を送信
+    func sendGoalAchievementNotification(goalTitle: String) async -> Bool {
+        guard let status = familyStatus else {
+            errorMessage = "ファミリー状況が取得できません"
+            return false
+        }
+        
+        do {
+            let response = try await api.sendGoalAchievementNotification(
+                familyId: status.familyId,
+                memberId: status.memberId,
+                memberName: status.name,
+                goalTitle: goalTitle
+            )
+            
+            print("目標達成通知の送信が完了しました")
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            print("Failed to send goal achievement notification: \(error)")
+            return false
+        }
+    }
 } 
