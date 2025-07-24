@@ -749,11 +749,11 @@ struct FamilyIdNotSetView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.blue)
             
-            Text("ファミリーIDが設定されていません")
+            Text("ファミリー設定が完了していません")
                 .font(.title2)
                 .foregroundColor(.gray)
             
-            Text("ファミリー目標を使用するには、設定画面でファミリーIDを設定してください。")
+            Text("ファミリー目標を使用するには、設定画面で名前とファミリーIDを設定してください。")
                 .font(.body)
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)

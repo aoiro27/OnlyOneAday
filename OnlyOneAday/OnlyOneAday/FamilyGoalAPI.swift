@@ -271,7 +271,7 @@ enum APIError: Error, LocalizedError {
         case .networkError(let error):
             return "ネットワークエラー: \(error.localizedDescription)"
         case .familyIdNotSet:
-            return "ファミリーIDが設定されていません"
+            return "名前とファミリーIDが設定されていません"
         }
     }
 } 

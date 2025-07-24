@@ -23,7 +23,8 @@ class FamilyGoalManager: ObservableObject {
     
     func checkFamilyId() {
         let familyId = UserDefaults.standard.string(forKey: "familyId")
-        isFamilyIdSet = familyId != nil && !familyId!.isEmpty
+        let userName = UserDefaults.standard.string(forKey: "userName")
+        isFamilyIdSet = familyId != nil && !familyId!.isEmpty && userName != nil && !userName!.isEmpty
     }
     
     // ファミリー目標を取得
@@ -31,7 +32,7 @@ class FamilyGoalManager: ObservableObject {
         checkFamilyId()
         
         if !isFamilyIdSet {
-            errorMessage = "ファミリーIDが設定されていません"
+            errorMessage = "名前とファミリーIDが設定されていません"
             return
         }
         

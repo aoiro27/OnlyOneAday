@@ -63,6 +63,27 @@ struct SettingsView: View {
                 }
                 
                 Section(header: Text("ファミリー設定")) {
+                    // 名前設定
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("名前")
+                                .font(.headline)
+                            Text("家族内での表示名です")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        TextField("名前", text: Binding(
+                            get: { UserDefaults.standard.string(forKey: "userName") ?? "" },
+                            set: { UserDefaults.standard.set($0, forKey: "userName") }
+                        ))
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .frame(width: 120)
+                    }
+                    .padding(.vertical, 4)
+                    
                     // ファミリーID設定
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
