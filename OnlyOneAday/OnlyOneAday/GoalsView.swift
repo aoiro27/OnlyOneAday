@@ -35,6 +35,17 @@ struct GoalsView: View {
         familyGoalManager.allMissionsCompleted
     }
     
+    // 今日既に報酬を受け取ったかどうかをチェック
+    var hasTodayRewardClaimed: Bool {
+        let today = Calendar.current.startOfDay(for: Date())
+        let lastClaimDate = UserDefaults.standard.object(forKey: "lastPersonalRewardClaimDate") as? Date
+        
+        if let lastClaimDate = lastClaimDate {
+            return Calendar.current.isDate(lastClaimDate, inSameDayAs: today)
+        }
+        return false
+    }
+    
     var body: some View {
         NavigationView {
             VStack {
@@ -52,6 +63,7 @@ struct GoalsView: View {
                         userGoalManager: userGoalManager,
                         completedGoals: completedGoals,
                         allGoalsCompleted: allGoalsCompleted,
+                        hasTodayRewardClaimed: hasTodayRewardClaimed,
                         showingAddGoal: $showingAddGoal,
                         showingRewardAlert: $showingRewardAlert,
                         showingRewardSettings: $showingRewardSettings,
@@ -121,7 +133,9 @@ struct GoalsView: View {
     }
     
     private func claimAllRewards() {
-        // TODO: 個人目標の報酬管理を実装
+        // 今日の報酬を受け取った日付を保存
+        UserDefaults.standard.set(Date(), forKey: "lastPersonalRewardClaimDate")
+        
         // 各報酬を個別に作成
         for dailyReward in dailyRewards {
             let reward = Reward(
@@ -187,6 +201,7 @@ struct PersonalGoalsTabView: View {
     @ObservedObject var userGoalManager: UserGoalManager
     let completedGoals: [UserGoalInfo]
     let allGoalsCompleted: Bool
+    let hasTodayRewardClaimed: Bool
     @Binding var showingAddGoal: Bool
     @Binding var showingRewardAlert: Bool
     @Binding var showingRewardSettings: Bool
@@ -278,7 +293,7 @@ struct PersonalGoalsTabView: View {
                     
                     List {
                         ForEach(userGoalManager.userGoals, id: \.goalId) { goal in
-                            UserGoalRowView(goal: goal, userGoalManager: userGoalManager)
+                            UserGoalRowView(goal: goal, userGoalManager: userGoalManager, familyGoalManager: familyGoalManager)
                                 .swipeActions(edge: .trailing) {
                                     Button("削除", role: .destructive) {
                                         Task {
@@ -291,10 +306,7 @@ struct PersonalGoalsTabView: View {
                     
                     // 全て達成時の報酬ボタン
                     if allGoalsCompleted {
-                        // TODO: 報酬管理の実装
-                        let hasAnyRewardClaimed = false
-                        
-                        if hasAnyRewardClaimed {
+                        if hasTodayRewardClaimed {
                             // 既に報酬を受け取っている場合
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")
@@ -665,6 +677,7 @@ struct GoalRowView: View {
 struct UserGoalRowView: View {
     let goal: UserGoalInfo
     @ObservedObject var userGoalManager: UserGoalManager
+    @ObservedObject var familyGoalManager: FamilyGoalManager
     @Environment(\.modelContext) private var modelContext
     @State private var showingRewardAlert = false
     
@@ -716,7 +729,9 @@ struct UserGoalRowView: View {
         
         if success {
             // ファミリーに参加している場合はプッシュ通知を送信
-            // TODO: FamilyGoalManagerへの参照を追加
+            if familyGoalManager.isFamilyIdSet {
+                await familyGoalManager.sendGoalAchievementNotification(goalTitle: goal.title)
+            }
             showingRewardAlert = true
         } else {
             print("Failed to complete user goal")
