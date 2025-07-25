@@ -12,12 +12,12 @@ enum CharacterStage: Int, CaseIterable {
     
     var name: String {
         switch self {
-        case .egg: return "卵"
-        case .baby: return "赤ちゃん"
-        case .child: return "子供"
-        case .teenager: return "青年"
-        case .adult: return "大人"
-        case .master: return "マスター"
+        case .egg: return "Lv.0"
+        case .baby: return "Lv.1"
+        case .child: return "Lv.2"
+        case .teenager: return "Lv.3"
+        case .adult: return "Lv.4"
+        case .master: return "Lv.5"
         }
     }
     
