@@ -13,15 +13,12 @@ struct AddGoalView: View {
     let modelContext: ModelContext
     
     @State private var title = ""
-    @State private var goalDescription = ""
     
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("目標の詳細")) {
                     TextField("目標のタイトル", text: $title)
-                    TextField("目標の説明", text: $goalDescription, axis: .vertical)
-                        .lineLimit(3...6)
                 }
                 
                 Section(header: Text("報酬について")) {
@@ -60,7 +57,7 @@ struct AddGoalView: View {
     }
     
     private func addGoal() {
-        let goal = Goal(title: title, goalDescription: goalDescription)
+        let goal = Goal(title: title, goalDescription: "")
         modelContext.insert(goal)
         
         do {

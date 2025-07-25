@@ -296,11 +296,19 @@ class FamilyGoalManager: ObservableObject {
             return false
         }
         
+        // 現在のユーザー情報を取得
+        let currentUserName = UserDefaults.standard.string(forKey: "userName") ?? status.name
+        
+        print("🔧 通知送信デバッグ情報:")
+        print("  - 使用するユーザー名: \(currentUserName)")
+        print("  - familyStatus.name: \(status.name)")
+        print("  - UserDefaults.userName: \(UserDefaults.standard.string(forKey: "userName") ?? "nil")")
+        
         do {
             let response = try await api.sendGoalAchievementNotification(
                 familyId: status.familyId,
                 memberId: status.memberId,
-                memberName: status.name,
+                memberName: currentUserName,
                 goalTitle: goalTitle
             )
             

@@ -12,7 +12,6 @@ struct AddFamilyGoalView: View {
     @ObservedObject var familyGoalManager: FamilyGoalManager
     
     @State private var title = ""
-    @State private var goalDescription = ""
     
     var body: some View {
         NavigationView {
@@ -20,10 +19,6 @@ struct AddFamilyGoalView: View {
                 Section(header: Text("ファミリー目標の詳細")) {
                     TextField("目標のタイトル", text: $title)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    TextField("目標の説明（任意）", text: $goalDescription, axis: .vertical)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .lineLimit(3...6)
                 }
                 
                 Section(header: Text("ファミリー目標の例")) {
@@ -77,12 +72,8 @@ struct AddFamilyGoalView: View {
     
     private func addFamilyGoal() async {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedDescription = goalDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // タイトルと説明を組み合わせてミッションを作成
-        let mission = trimmedDescription.isEmpty ? trimmedTitle : "\(trimmedTitle): \(trimmedDescription)"
-        
-        let success = await familyGoalManager.createFamilyMission(mission: mission)
+        let success = await familyGoalManager.createFamilyMission(mission: trimmedTitle)
         
         if success {
             // ファミリー目標一覧を再取得
