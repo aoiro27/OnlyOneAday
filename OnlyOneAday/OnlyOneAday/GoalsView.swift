@@ -196,7 +196,19 @@ struct PersonalGoalsTabView: View {
     
     var body: some View {
         VStack {
-            if userGoalManager.userGoals.isEmpty {
+            if userGoalManager.isLoading {
+                // ローディング表示
+                VStack(spacing: 20) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                    
+                    Text("目標を読み込み中...")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if userGoalManager.userGoals.isEmpty {
                 VStack(spacing: 20) {
                     Image(systemName: "target")
                         .font(.system(size: 60))
@@ -349,7 +361,19 @@ struct FamilyGoalsTabView: View {
     
     var body: some View {
         VStack {
-            if familyGoalManager.familyMissions.isEmpty {
+            if familyGoalManager.isLoading {
+                // ローディング表示
+                VStack(spacing: 20) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                    
+                    Text("ファミリー目標を読み込み中...")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if familyGoalManager.familyMissions.isEmpty {
                 VStack(spacing: 20) {
                     Image(systemName: "house.fill")
                         .font(.system(size: 60))
