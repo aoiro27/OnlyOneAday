@@ -9,7 +9,10 @@ import SwiftUI
 import UserNotifications
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        
+        // アプリ起動時にバッジをリセット
+        application.applicationIconBadgeNumber = 0
         
         // 通知センターのデリゲートを設定
         UNUserNotificationCenter.current().delegate = self
@@ -97,6 +100,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         // フォアグラウンドでも通知を表示
         completionHandler([.banner, .sound, .badge])
+    }
+    
+    // アプリがフォアグラウンドに戻った時
+    func applicationWillEnterForeground(_ application: UIApplication) {
+        // バッジをリセット
+        application.applicationIconBadgeNumber = 0
+    }
+    
+    // アプリがアクティブになった時
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        // バッジをリセット
+        application.applicationIconBadgeNumber = 0
     }
     
     // 通知をタップした場合
