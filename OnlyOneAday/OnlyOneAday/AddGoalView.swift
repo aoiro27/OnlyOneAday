@@ -17,8 +17,8 @@ struct AddGoalView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("目標の詳細")) {
-                    TextField("目標のタイトル", text: $title)
+                Section() {
+                    TextField("ミッション内容", text: $title)
                 }
                 
                 Section(header: Text("報酬について")) {
@@ -37,7 +37,7 @@ struct AddGoalView: View {
                     }
                 }
             }
-            .navigationTitle("新しい目標")
+            .navigationTitle("ミッションを追加")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

@@ -106,6 +106,10 @@ def user_goals_handler(request):
                 doc_dict = doc.to_dict()
                 doc_dict['goalId'] = doc.id
                 result.append(doc_dict)
+            
+            # 作成日時順にソート（新しい順）
+            result.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
+            
             return (json.dumps(result, ensure_ascii=False), 200, {'Content-Type': 'application/json'})
 
         else:

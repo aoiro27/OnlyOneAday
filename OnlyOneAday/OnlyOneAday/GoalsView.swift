@@ -39,9 +39,9 @@ struct GoalsView: View {
         NavigationView {
             VStack {
                 // タブ選択
-                Picker("目標タイプ", selection: $selectedTab) {
-                    Text("個人目標").tag(0)
-                    Text("ファミリー目標").tag(1)
+                Picker("ミッションタイプ", selection: $selectedTab) {
+                    Text("個人ミッション").tag(0)
+                    Text("ファミリーミッション").tag(1)
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
@@ -74,7 +74,7 @@ struct GoalsView: View {
                     }
                 }
             }
-            .navigationTitle("毎日の目標")
+            .navigationTitle("デイリーミッション")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
@@ -126,9 +126,9 @@ struct GoalsView: View {
         for dailyReward in dailyRewards {
             let reward = Reward(
                 title: dailyReward.title,
-                rewardDescription: "全ての目標を達成して獲得した特別な報酬です。今日一日お疲れさまでした！",
+                rewardDescription: "全てのミッションを達成して獲得した特別な報酬です。今日一日お疲れさまでした！",
                 minutes: dailyReward.minutes,
-                goalTitle: "全ての目標達成"
+                goalTitle: "全てのミッション達成"
             )
             modelContext.insert(reward)
         }
@@ -214,11 +214,11 @@ struct PersonalGoalsTabView: View {
                         .font(.system(size: 60))
                         .foregroundColor(.gray)
                     
-                    Text("個人目標が設定されていません")
+                    Text("個人ミッションが設定されていません")
                         .font(.title2)
                         .foregroundColor(.gray)
                     
-                    Text("新しい目標を追加して、毎日の学習を充実させましょう")
+                    Text("新しいミッションを追加して、毎日の成長しましょう")
                         .font(.body)
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
@@ -227,7 +227,7 @@ struct PersonalGoalsTabView: View {
                     Button(action: {
                         showingAddGoal = true
                     }) {
-                        Text("個人目標を追加")
+                        Text("ミッション追加")
                             .font(.headline)
                             .foregroundColor(.white)
                             .padding()
@@ -315,7 +315,7 @@ struct PersonalGoalsTabView: View {
                             }) {
                                 HStack {
                                     Image(systemName: "gift.fill")
-                                    Text("全ての目標達成！報酬を受け取る")
+                                    Text("全てのミッション達成！報酬を受け取る")
                                 }
                                 .font(.headline)
                                 .foregroundColor(.white)
@@ -368,7 +368,7 @@ struct FamilyGoalsTabView: View {
                         .scaleEffect(1.5)
                         .progressViewStyle(CircularProgressViewStyle(tint: .blue))
                     
-                    Text("ファミリー目標を読み込み中...")
+                    Text("ファミリーミッションを読み込み中...")
                         .font(.body)
                         .foregroundColor(.secondary)
                 }
@@ -379,7 +379,7 @@ struct FamilyGoalsTabView: View {
                         .font(.system(size: 60))
                         .foregroundColor(.blue)
                     
-                    Text("ファミリー目標が設定されていません")
+                    Text("ファミリーミッションが設定されていません")
                         .font(.title2)
                         .foregroundColor(.gray)
                     
@@ -392,7 +392,7 @@ struct FamilyGoalsTabView: View {
                     Button(action: {
                         showingAddGoal = true
                     }) {
-                        Text("ファミリー目標を追加")
+                        Text("ファミリーミッションを追加")
                             .font(.headline)
                             .foregroundColor(.white)
                             .padding()
@@ -498,7 +498,7 @@ struct RewardSettingsView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("全ての目標を達成すると設定した報酬を獲得できます")
+                        Text("全てのミッションを達成すると設定した報酬を獲得できます")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         

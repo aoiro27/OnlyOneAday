@@ -24,14 +24,14 @@ struct ContentView: View {
             StudyView()
                 .tabItem {
                     Image(systemName: "book.fill")
-                    Text("学習")
+                    Text("強くなる")
                 }
                 .tag(1)
             
             GoalsView()
                 .tabItem {
                     Image(systemName: "target")
-                    Text("目標")
+                    Text("ミッション")
                 }
                 .tag(2)
             

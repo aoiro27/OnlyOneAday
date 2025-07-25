@@ -16,12 +16,12 @@ struct AddFamilyGoalView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("ファミリー目標の詳細")) {
-                    TextField("目標のタイトル", text: $title)
+                Section() {
+                    TextField("ミッション内容", text: $title)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                 }
                 
-                Section(header: Text("ファミリー目標の例")) {
+                Section(header: Text("ミッションの例")) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("• 家族みんなで夕食を一緒に食べる")
                         Text("• お手伝いを3つ以上する")
@@ -38,18 +38,18 @@ struct AddFamilyGoalView: View {
                         HStack {
                             Image(systemName: "gift.fill")
                                 .foregroundColor(.orange)
-                            Text("報酬: 肩叩き5分")
+                            Text("報酬: 肩叩き1分")
                                 .font(.subheadline)
                                 .foregroundColor(.orange)
                         }
                         
-                        Text("全てのファミリー目標を達成すると、肩叩き5分の報酬を獲得できます。")
+                        Text("ファミリーミッションを達成すると、肩叩き1分の報酬を獲得できます。")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
             }
-            .navigationTitle("ファミリー目標を追加")
+            .navigationTitle("ミッションを追加")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -76,7 +76,7 @@ struct AddFamilyGoalView: View {
         let success = await familyGoalManager.createFamilyMission(mission: trimmedTitle)
         
         if success {
-            // ファミリー目標一覧を再取得
+            // ファミリーミッション一覧を再取得
             await familyGoalManager.fetchFamilyMissions()
             dismiss()
         }
