@@ -12,11 +12,13 @@ struct FamilyMissionResponse: Codable {
     let docId: String
     let mission: String
     let isCleared: Bool
+    let createdAt: String?
     
     enum CodingKeys: String, CodingKey {
         case docId = "doc_id"
         case mission
         case isCleared = "isCleared"
+        case createdAt = "createdAt"
     }
     
     init(from decoder: Decoder) throws {
@@ -28,6 +30,9 @@ struct FamilyMissionResponse: Codable {
         
         // missionフィールドが存在しない場合は空文字列を使用
         mission = try container.decodeIfPresent(String.self, forKey: .mission) ?? ""
+        
+        // createdAtフィールド（オプショナル）
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
     }
     
     // 手動でインスタンスを作成するためのイニシャライザー
@@ -35,6 +40,7 @@ struct FamilyMissionResponse: Codable {
         self.docId = docId
         self.mission = mission
         self.isCleared = isCleared
+        self.createdAt = nil
     }
 }
 
@@ -54,11 +60,13 @@ struct CreateFamilyMissionRequest: Codable {
     let familyId: String
     let mission: String
     let isCleared: Bool
+    let createdAt: String
     
     enum CodingKeys: String, CodingKey {
         case familyId = "familyId"
         case mission
         case isCleared = "isCleared"
+        case createdAt = "createdAt"
     }
 }
 
@@ -173,7 +181,8 @@ class FamilyGoalAPI {
         let request = CreateFamilyMissionRequest(
             familyId: familyId,
             mission: mission,
-            isCleared: false
+            isCleared: false,
+            createdAt: Date().ISO8601Format()
         )
         
         var urlRequest = URLRequest(url: url)

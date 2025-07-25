@@ -30,16 +30,19 @@ def family_missions_handler(request):
 
             is_cleared = data.get('isCleared')
             mission = data.get('mission')
+            created_at = data.get('createdAt')
 
             if not isinstance(is_cleared, bool):
                 return ('isCleared must be a boolean', 400)
             if not isinstance(mission, str):
                 return ('mission must be a string', 400)
 
-            doc_ref = db.collection(collection_path).add({
+            create_data = {
                 'isCleared': is_cleared,
-                'mission': mission
-            })
+                'mission': mission,
+                'createdAt': created_at
+            }
+            doc_ref = db.collection(collection_path).add(create_data)
             response = {
                 'result': 'created',
                 'doc_id': doc_ref[1].id
@@ -83,6 +86,10 @@ def family_missions_handler(request):
                 doc_dict = doc.to_dict()
                 doc_dict['doc_id'] = doc.id
                 result.append(doc_dict)
+            
+            # 作成日時順にソート（新しい順）
+            result.sort(key=lambda x: x.get('createdAt', ''), reverse=false)
+            
             return (json.dumps(result, ensure_ascii=False), 200, {'Content-Type': 'application/json'})
 
         elif request.method == 'DELETE':
