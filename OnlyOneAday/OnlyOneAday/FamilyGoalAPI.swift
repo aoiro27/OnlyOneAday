@@ -303,7 +303,7 @@ class FamilyGoalAPI {
     
     // ファミリーメンバー追加（ファミリー作成・参加）
     func addFamilyMember(familyId: String, name: String) async throws -> FamilyMemberResponse {
-        guard let url = URL(string: "\(familyManagementURL)/members?familyId=\(familyId)") else {
+        guard let url = URL(string: "\(familyManagementURL)?familyId=\(familyId)") else {
             throw APIError.invalidURL
         }
         
@@ -312,12 +312,24 @@ class FamilyGoalAPI {
         
         let request = FamilyMemberRequest(name: name, deviceToken: deviceToken)
         
+        // デバッグ情報を出力
+        print("🔧 ファミリー参加リクエスト:")
+        print("  - URL: \(url)")
+        print("  - familyId: \(familyId)")
+        print("  - name: \(name)")
+        print("  - deviceToken: \(deviceToken ?? "nil")")
+        print("  - request: \(request)")
+        
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         do {
             urlRequest.httpBody = try JSONEncoder().encode(request)
+            // リクエストボディの内容も出力
+            if let requestBodyString = String(data: urlRequest.httpBody!, encoding: .utf8) {
+                print("  - requestBody: \(requestBodyString)")
+            }
         } catch {
             throw APIError.encodingError(error)
         }
@@ -334,15 +346,25 @@ class FamilyGoalAPI {
         
         do {
             let memberResponse = try JSONDecoder().decode(FamilyMemberResponse.self, from: data)
+            
+            // レスポンスの内容も出力
+            print("✅ ファミリー参加レスポンス:")
+            print("  - result: \(memberResponse.result)")
+            print("  - memberId: \(memberResponse.memberId)")
+            
             return memberResponse
         } catch {
+            // デバッグ用：レスポンスの内容を出力
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("❌ ファミリー参加エラー - API Response: \(responseString)")
+            }
             throw APIError.decodingError(error)
         }
     }
     
     // ファミリーメンバー削除（ファミリー脱退）
     func removeFamilyMember(familyId: String, memberId: String) async throws -> FamilyMemberResponse {
-        guard let url = URL(string: "\(familyManagementURL)/members?familyId=\(familyId)&memberId=\(memberId)") else {
+        guard let url = URL(string: "\(familyManagementURL)?familyId=\(familyId)&memberId=\(memberId)") else {
             throw APIError.invalidURL
         }
         
@@ -369,7 +391,7 @@ class FamilyGoalAPI {
     
     // ファミリーメンバー更新（デバイストークン更新など）
     func updateFamilyMember(familyId: String, memberId: String, name: String) async throws -> FamilyMemberResponse {
-        guard let url = URL(string: "\(familyManagementURL)/members?familyId=\(familyId)") else {
+        guard let url = URL(string: "\(familyManagementURL)?familyId=\(familyId)") else {
             throw APIError.invalidURL
         }
         
@@ -425,7 +447,7 @@ class FamilyGoalAPI {
     
     // ファミリーメンバー一覧取得
     func getFamilyMembers(familyId: String) async throws -> [FamilyMemberInfo] {
-        guard let url = URL(string: "\(familyManagementURL)/members?familyId=\(familyId)") else {
+        guard let url = URL(string: "\(familyManagementURL)?familyId=\(familyId)") else {
             throw APIError.invalidURL
         }
         
