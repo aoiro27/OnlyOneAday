@@ -33,12 +33,15 @@ def get_family_member_device_tokens(family_id, exclude_member_id=None):
     """
     try:
         collection_path = f'family-management/{family_id}/members'
+        print(f"🔧 Firestoreコレクションパス: {collection_path}")
         docs = db.collection(collection_path).stream()
         
         device_tokens = []
         for doc in docs:
             doc_data = doc.to_dict()
             member_id = doc.id
+            
+            print(f"  - メンバー確認: {member_id} (除外対象: {exclude_member_id})")
             
             # 自分以外のメンバーのデバイストークンを取得
             if exclude_member_id is None or member_id != exclude_member_id:
@@ -48,6 +51,11 @@ def get_family_member_device_tokens(family_id, exclude_member_id=None):
                         'name': doc_data.get('name', 'Unknown'),
                         'deviceToken': doc_data['deviceToken']
                     })
+                    print(f"    ✅ 追加: {doc_data.get('name', 'Unknown')} ({member_id})")
+                else:
+                    print(f"    ❌ デバイストークンなし: {doc_data.get('name', 'Unknown')} ({member_id})")
+            else:
+                print(f"    ⏭️ 除外: {doc_data.get('name', 'Unknown')} ({member_id}) - 達成者")
         
         print(f"🔧 ファミリーメンバーのデバイストークン取得:")
         print(f"  - family_id: {family_id}")
@@ -256,6 +264,7 @@ def send_push_notifications_to_family(family_id, exclude_member_id, title, body,
         
         for i, token_info in enumerate(device_tokens):
             print(f"  - 送信 {i+1}/{len(device_tokens)}: {token_info['name']} ({token_info['memberId']})")
+            print(f"    - デバイストークン: {token_info['deviceToken'][:20]}...{token_info['deviceToken'][-20:]}")
             result = send_push_notification(
                 token_info['deviceToken'], 
                 title, 
@@ -369,8 +378,15 @@ def send_family_goal_notification(request):
         # 通知の内容を設定
         title = "🎉 目標達成！"
         body = f"{member_name}が「{goal_title}」を達成しました！"
-        badge = 1
+        badge = None  # バッジは動的に管理
         sound = "default"
+        
+        print(f"🔧 目標達成通知送信デバッグ:")
+        print(f"  - family_id: {family_id}")
+        print(f"  - member_id (達成者): {member_id}")
+        print(f"  - member_name: {member_name}")
+        print(f"  - goal_title: {goal_title}")
+        print(f"  - exclude_member_id: {member_id} (達成者を除外)")
         
         # ファミリーメンバーに通知を送信
         result = send_push_notifications_to_family(

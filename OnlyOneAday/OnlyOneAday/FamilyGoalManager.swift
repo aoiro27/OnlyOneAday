@@ -273,11 +273,32 @@ class FamilyGoalManager: ObservableObject {
             return false
         }
         
+        // 最新のファミリーメンバー一覧を取得
+        await fetchFamilyMembers()
+        
+        // 現在のユーザー情報を取得
+        let currentUserName = UserDefaults.standard.string(forKey: "userName") ?? status.name
+        
+        // 現在のユーザーのmemberIdを確実に取得
+        let currentMemberId: String
+        if let currentMember = familyMembers.first(where: { $0.name == currentUserName }) {
+            currentMemberId = currentMember.memberId
+        } else {
+            // フォールバック: status.memberIdを使用
+            currentMemberId = status.memberId
+        }
+        
+        print("🔧 デバイストークン更新デバッグ情報:")
+        print("  - 使用するユーザー名: \(currentUserName)")
+        print("  - familyStatus.name: \(status.name)")
+        print("  - familyStatus.memberId: \(status.memberId)")
+        print("  - 現在のユーザーのmemberId: \(currentMemberId)")
+        
         do {
             let response = try await api.updateFamilyMember(
                 familyId: status.familyId,
-                memberId: status.memberId,
-                name: status.name
+                memberId: currentMemberId,
+                name: currentUserName
             )
             
             print("デバイストークンの更新が完了しました")
@@ -296,18 +317,32 @@ class FamilyGoalManager: ObservableObject {
             return false
         }
         
+        // 最新のファミリーメンバー一覧を取得
+        await fetchFamilyMembers()
+        
         // 現在のユーザー情報を取得
         let currentUserName = UserDefaults.standard.string(forKey: "userName") ?? status.name
+        
+        // 現在のユーザーのmemberIdを確実に取得
+        let currentMemberId: String
+        if let currentMember = familyMembers.first(where: { $0.name == currentUserName }) {
+            currentMemberId = currentMember.memberId
+        } else {
+            // フォールバック: status.memberIdを使用
+            currentMemberId = status.memberId
+        }
         
         print("🔧 通知送信デバッグ情報:")
         print("  - 使用するユーザー名: \(currentUserName)")
         print("  - familyStatus.name: \(status.name)")
+        print("  - familyStatus.memberId: \(status.memberId)")
+        print("  - 現在のユーザーのmemberId: \(currentMemberId)")
         print("  - UserDefaults.userName: \(UserDefaults.standard.string(forKey: "userName") ?? "nil")")
         
         do {
             let response = try await api.sendGoalAchievementNotification(
                 familyId: status.familyId,
-                memberId: status.memberId,
+                memberId: currentMemberId,
                 memberName: currentUserName,
                 goalTitle: goalTitle
             )
