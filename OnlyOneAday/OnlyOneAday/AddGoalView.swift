@@ -10,7 +10,7 @@ import SwiftData
 
 struct AddGoalView: View {
     @Environment(\.dismiss) private var dismiss
-    let modelContext: ModelContext
+    @ObservedObject var userGoalManager: UserGoalManager
     
     @State private var title = ""
     
@@ -48,23 +48,27 @@ struct AddGoalView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("追加") {
-                        addGoal()
+                        Task {
+                            await addGoal()
+                        }
                     }
-                    .disabled(title.isEmpty)
+                    .disabled(title.isEmpty || userGoalManager.isLoading)
                 }
             }
         }
     }
     
-    private func addGoal() {
-        let goal = Goal(title: title, goalDescription: "")
-        modelContext.insert(goal)
+    private func addGoal() async {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        do {
-            try modelContext.save()
+        let success = await userGoalManager.createUserGoal(title: trimmedTitle)
+        
+        if success {
             dismiss()
-        } catch {
-            print("Failed to save goal: \(error)")
         }
     }
+}
+
+#Preview {
+    AddGoalView(userGoalManager: UserGoalManager())
 } 

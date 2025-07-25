@@ -10,7 +10,7 @@ import SwiftData
 
 struct GoalsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var goals: [Goal]
+    @StateObject private var userGoalManager = UserGoalManager()
     @EnvironmentObject var familyGoalManager: FamilyGoalManager
     @State private var selectedTab = 0
     @State private var showingAddGoal = false
@@ -19,8 +19,8 @@ struct GoalsView: View {
     @State private var showingRewardSettings = false
     @State private var dailyRewards: [DailyReward] = []
     
-    var completedGoals: [Goal] {
-        goals.filter { $0.isCompleted }
+    var completedGoals: [UserGoalInfo] {
+        userGoalManager.completedGoals
     }
     
     var completedFamilyGoals: [FamilyMissionResponse] {
@@ -28,7 +28,7 @@ struct GoalsView: View {
     }
     
     var allGoalsCompleted: Bool {
-        !goals.isEmpty && goals.allSatisfy { $0.isCompleted }
+        !userGoalManager.userGoals.isEmpty && userGoalManager.userGoals.allSatisfy { $0.isCompleted }
     }
     
     var allFamilyGoalsCompleted: Bool {
@@ -49,7 +49,7 @@ struct GoalsView: View {
                 if selectedTab == 0 {
                     // 個人目標タブ
                     PersonalGoalsTabView(
-                        goals: goals,
+                        userGoalManager: userGoalManager,
                         completedGoals: completedGoals,
                         allGoalsCompleted: allGoalsCompleted,
                         showingAddGoal: $showingAddGoal,
@@ -86,7 +86,7 @@ struct GoalsView: View {
             }
             .sheet(isPresented: $showingAddGoal) {
                 if selectedTab == 0 {
-                    AddGoalView(modelContext: modelContext)
+                    AddGoalView(userGoalManager: userGoalManager)
                 } else {
                     AddFamilyGoalView(familyGoalManager: familyGoalManager)
                 }
@@ -109,7 +109,7 @@ struct GoalsView: View {
         }
         .onAppear {
             loadDailyRewards()
-            checkAndResetGoals()
+            // 個人目標はクラウド管理のため、リセット機能は不要
             familyGoalManager.checkLocalFamilyId()
             if familyGoalManager.isFamilyIdSet {
                 Task {
@@ -121,18 +121,7 @@ struct GoalsView: View {
     }
     
     private func claimAllRewards() {
-        // 既に報酬を受け取っているかチェック
-        let hasAnyRewardClaimed = goals.contains { $0.isRewardClaimed }
-        if hasAnyRewardClaimed {
-            // 既に報酬を受け取っている場合は何もしない
-            return
-        }
-        
-        // 全ての目標に報酬を受け取ったマークを付ける
-        for goal in goals {
-            goal.claimReward()
-        }
-        
+        // TODO: 個人目標の報酬管理を実装
         // 各報酬を個別に作成
         for dailyReward in dailyRewards {
             let reward = Reward(
@@ -166,17 +155,8 @@ struct GoalsView: View {
     }
     
     private func resetAllGoals() {
-        for goal in goals {
-            goal.reset()
-        }
-        
-        // ファミリー目標はAPIで管理されるため、リセット機能は不要
-        
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to reset goals: \(error)")
-        }
+        // 個人目標はクラウド管理のため、リセット機能は不要
+        // TODO: 必要に応じてAPI経由でリセット機能を実装
     }
     
     private func loadDailyRewards() {
@@ -204,8 +184,8 @@ struct GoalsView: View {
 
 // 個人目標タブビュー
 struct PersonalGoalsTabView: View {
-    let goals: [Goal]
-    let completedGoals: [Goal]
+    @ObservedObject var userGoalManager: UserGoalManager
+    let completedGoals: [UserGoalInfo]
     let allGoalsCompleted: Bool
     @Binding var showingAddGoal: Bool
     @Binding var showingRewardAlert: Bool
@@ -216,7 +196,7 @@ struct PersonalGoalsTabView: View {
     
     var body: some View {
         VStack {
-            if goals.isEmpty {
+            if userGoalManager.userGoals.isEmpty {
                 VStack(spacing: 20) {
                     Image(systemName: "target")
                         .font(.system(size: 60))
@@ -247,7 +227,7 @@ struct PersonalGoalsTabView: View {
             } else {
                 VStack {
                     // 進捗表示
-                    GoalProgressView(completedGoals: completedGoals, totalGoals: goals.count)
+                    GoalProgressView(completedGoals: completedGoals, totalGoals: userGoalManager.userGoals.count)
                     
                     // 報酬設定表示
                     VStack(spacing: 8) {
@@ -285,20 +265,22 @@ struct PersonalGoalsTabView: View {
                     .padding(.horizontal)
                     
                     List {
-                        ForEach(goals) { goal in
-                            GoalRowView(goal: goal, modelContext: modelContext)
+                        ForEach(userGoalManager.userGoals, id: \.goalId) { goal in
+                            UserGoalRowView(goal: goal, userGoalManager: userGoalManager)
                                 .swipeActions(edge: .trailing) {
                                     Button("削除", role: .destructive) {
-                                        deleteGoal(goal)
+                                        Task {
+                                            await deleteGoal(goal)
+                                        }
                                     }
                                 }
                         }
-                        .onDelete(perform: deleteGoals)
                     }
                     
                     // 全て達成時の報酬ボタン
                     if allGoalsCompleted {
-                        let hasAnyRewardClaimed = goals.contains { $0.isRewardClaimed }
+                        // TODO: 報酬管理の実装
+                        let hasAnyRewardClaimed = false
                         
                         if hasAnyRewardClaimed {
                             // 既に報酬を受け取っている場合
@@ -348,15 +330,11 @@ struct PersonalGoalsTabView: View {
         }
     }
     
-    private func deleteGoals(offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(goals[index])
-        }
+    private func deleteGoal(_ goal: UserGoalInfo) async {
+        let success = await userGoalManager.deleteUserGoal(goalId: goal.goalId)
         
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to delete goal: \(error)")
+        if !success {
+            print("Failed to delete user goal")
         }
     }
 }
@@ -533,7 +511,7 @@ struct RewardSettingsView: View {
 }
 
 struct GoalProgressView: View {
-    let completedGoals: [Goal]
+    let completedGoals: [UserGoalInfo]
     let totalGoals: Int
     
     var progress: Double {
@@ -655,6 +633,69 @@ struct GoalRowView: View {
             }
         } catch {
             print("Failed to complete goal: \(error)")
+        }
+    }
+}
+
+// 個人目標行ビュー
+struct UserGoalRowView: View {
+    let goal: UserGoalInfo
+    @ObservedObject var userGoalManager: UserGoalManager
+    @Environment(\.modelContext) private var modelContext
+    @State private var showingRewardAlert = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(goal.title)
+                        .font(.headline)
+                }
+                
+                Spacer()
+                
+                VStack(spacing: 8) {
+                    if !goal.isCompleted {
+                        Button(action: {
+                            Task {
+                                await completeGoal()
+                            }
+                        }) {
+                            Image(systemName: "checkmark.circle")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                        }
+                    } else {
+                        VStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.green)
+                            
+                            Text("完了")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .alert("おめでとうございます！", isPresented: $showingRewardAlert) {
+            Button("OK") { }
+        } message: {
+            Text("個人目標「\(goal.title)」を達成しました！\n\n今日一日お疲れさまでした！")
+        }
+    }
+    
+    private func completeGoal() async {
+        let success = await userGoalManager.completeUserGoal(goalId: goal.goalId)
+        
+        if success {
+            // ファミリーに参加している場合はプッシュ通知を送信
+            // TODO: FamilyGoalManagerへの参照を追加
+            showingRewardAlert = true
+        } else {
+            print("Failed to complete user goal")
         }
     }
 }
