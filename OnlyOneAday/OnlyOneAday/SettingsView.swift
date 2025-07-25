@@ -12,58 +12,6 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("GitHub設定")) {
-                    // アクセストークン設定
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Personal Access Token")
-                                .font(.headline)
-                            Text(settingsManager.hasGitHubToken() ? "設定済み" : "未設定")
-                                .font(.caption)
-                                .foregroundColor(settingsManager.hasGitHubToken() ? .green : .red)
-                        }
-                        
-                        Spacer()
-                        
-                        Button(settingsManager.hasGitHubToken() ? "変更" : "設定") {
-                            tempToken = settingsManager.githubAccessToken
-                            showingTokenInput = true
-                        }
-                        .foregroundColor(.blue)
-                    }
-                    .padding(.vertical, 4)
-                    
-                    // デフォルトユーザー名設定
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("デフォルトユーザー名")
-                                .font(.headline)
-                            Text("検索時に自動入力されます")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        TextField("ユーザー名", text: $settingsManager.defaultGitHubUsername)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .frame(width: 120)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                    }
-                    .padding(.vertical, 4)
-                    
-                    // トークン削除ボタン
-                    if settingsManager.hasGitHubToken() {
-                        Button("トークンを削除") {
-                            settingsManager.clearGitHubToken()
-                            alertMessage = "トークンが削除されました"
-                            showingAlert = true
-                        }
-                        .foregroundColor(.red)
-                    }
-                }
-                
                 Section(header: Text("ファミリー設定")) {
                     // ファミリー状況表示
                     HStack {
@@ -91,6 +39,55 @@ struct SettingsView: View {
                         .foregroundColor(.blue)
                     }
                     .padding(.vertical, 4)
+                }
+                
+                Section(header: Text("GitHub設定")) {
+                    // アクセストークン設定
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Personal Access Token")
+                                .font(.headline)
+                            Text(settingsManager.hasGitHubToken() ? "設定済み" : "未設定")
+                                .font(.caption)
+                                .foregroundColor(settingsManager.hasGitHubToken() ? .green : .red)
+                        }
+                        
+                        Spacer()
+                        
+                        Button(settingsManager.hasGitHubToken() ? "変更" : "設定") {
+                            tempToken = settingsManager.githubAccessToken
+                            showingTokenInput = true
+                        }
+                        .foregroundColor(.blue)
+                    }
+                    .padding(.vertical, 4)
+                    
+                    // デフォルトユーザー名設定
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("ユーザー名")
+                                .font(.headline)
+                        }
+                        
+                        Spacer()
+                        
+                        TextField("ユーザー名", text: $settingsManager.defaultGitHubUsername)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .frame(width: 120)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                    }
+                    .padding(.vertical, 4)
+                    
+                    // トークン削除ボタン
+                    if settingsManager.hasGitHubToken() {
+                        Button("トークンを削除") {
+                            settingsManager.clearGitHubToken()
+                            alertMessage = "トークンが削除されました"
+                            showingAlert = true
+                        }
+                        .foregroundColor(.red)
+                    }
                 }
                 
                 Section(header: Text("ヘルプ")) {
