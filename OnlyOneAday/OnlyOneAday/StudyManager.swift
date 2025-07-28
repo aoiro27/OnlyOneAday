@@ -9,6 +9,7 @@ class StudyManager: ObservableObject {
     @Published var isTimerRunning = false
     
     private var timer: Timer?
+    private var sessionStartTime: Date? // 開始時刻を記録
     private let modelContext: ModelContext
     
     init(modelContext: ModelContext) {
@@ -19,6 +20,7 @@ class StudyManager: ObservableObject {
     func startSession(content: String) {
         let session = StudySession(content: content)
         currentSession = session
+        sessionStartTime = Date() // 開始時刻を記録
         modelContext.insert(session)
         
         startTimer()
@@ -34,6 +36,7 @@ class StudyManager: ObservableObject {
         stopTimer()
         currentSession = nil
         elapsedTime = 0
+        sessionStartTime = nil // 開始時刻をクリア
         
         try? modelContext.save()
     }
@@ -43,8 +46,15 @@ class StudyManager: ObservableObject {
         isTimerRunning = true
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                self?.elapsedTime += 1
+                // 開始時刻から実際の経過時間を計算
+                if let startTime = self?.sessionStartTime {
+                    self?.elapsedTime = Date().timeIntervalSince(startTime)
+                }
             }
+        }
+        // RunLoopに追加してスリープ時の動作を改善
+        if let timer = timer {
+            RunLoop.current.add(timer, forMode: .common)
         }
     }
     
