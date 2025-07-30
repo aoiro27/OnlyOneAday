@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct GitHubContributionsView: View {
     @StateObject private var graphQLClient = GitHubGraphQLClient()
@@ -9,6 +10,41 @@ struct GitHubContributionsView: View {
     @State private var showingDatePicker = false
     @State private var showingCharacter = false
     @State private var showingCharacterDetail = false
+    @Environment(\.modelContext) private var modelContext
+    
+    // 目標達成統計
+    @State private var personalGoalAchievements: [GoalAchievementRecord] = []
+    @State private var familyGoalAchievements: [GoalAchievementRecord] = []
+    
+    // 今日の目標達成数
+    private var todayPersonalAchievements: Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        return personalGoalAchievements.filter { 
+            Calendar.current.isDate($0.achievedDate, inSameDayAs: today) 
+        }.count
+    }
+    
+    private var todayFamilyAchievements: Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        return familyGoalAchievements.filter { 
+            Calendar.current.isDate($0.achievedDate, inSameDayAs: today) 
+        }.count
+    }
+    
+    // 今月の目標達成数
+    private var thisMonthPersonalAchievements: Int {
+        let startOfMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+        return personalGoalAchievements.filter { 
+            $0.achievedDate >= startOfMonth 
+        }.count
+    }
+    
+    private var thisMonthFamilyAchievements: Int {
+        let startOfMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+        return familyGoalAchievements.filter { 
+            $0.achievedDate >= startOfMonth 
+        }.count
+    }
     
     // カレンダー関連の計算プロパティ
     private var monthYearString: String {
@@ -95,6 +131,34 @@ struct GitHubContributionsView: View {
         let lines = message.components(separatedBy: .newlines)
         let firstLine = lines.first ?? message
         return firstLine.count > 50 ? String(firstLine.prefix(50)) + "..." : firstLine
+    }
+    
+    // SwiftDataから目標達成記録を読み込む
+    private func loadGoalAchievements() {
+        let fetchDescriptor = FetchDescriptor<GoalAchievementRecord>()
+        
+        do {
+            let allRecords = try modelContext.fetch(fetchDescriptor)
+            
+            // 個人目標とファミリー目標を分類
+            // 個人目標は通常のUUID形式、ファミリー目標はdocId形式
+            personalGoalAchievements = allRecords.filter { record in
+                // UUID形式のgoalIdは個人目標
+                UUID(uuidString: record.goalId) != nil
+            }
+            
+            familyGoalAchievements = allRecords.filter { record in
+                // UUID形式でないgoalIdはファミリー目標
+                UUID(uuidString: record.goalId) == nil
+            }
+            
+            print("📊 Loaded goal achievements:")
+            print("   Personal goals: \(personalGoalAchievements.count)")
+            print("   Family goals: \(familyGoalAchievements.count)")
+            
+        } catch {
+            print("Failed to load goal achievements: \(error)")
+        }
     }
 
     var body: some View {
@@ -197,43 +261,43 @@ struct GitHubContributionsView: View {
                                             VStack(spacing: 8) {
                                                 HStack(spacing: 15) {
                                                     VStack(spacing: 2) {
-                                                        Text("\(characterManager.character.totalCommits)")
+                                                        Text("\(todayPersonalAchievements)")
                                                             .font(.title3)
                                                             .fontWeight(.bold)
-                                                            .foregroundColor(.yellow)
-                                                        Text("総コミット数")
+                                                            .foregroundColor(.blue)
+                                                        Text("今日の個人目標")
                                                             .font(.caption2)
                                                             .foregroundColor(.secondary)
                                                     }
                                                     
                                                     VStack(spacing: 2) {
-                                                        Text("\(characterManager.character.consecutiveDays)")
+                                                        Text("\(todayFamilyAchievements)")
                                                             .font(.title3)
                                                             .fontWeight(.bold)
-                                                            .foregroundColor(.orange)
-                                                        Text("連続コミット")
+                                                            .foregroundColor(.green)
+                                                        Text("今日のファミリー目標")
                                                             .font(.caption2)
                                                             .foregroundColor(.secondary)
                                                     }
                                                     
                                                     VStack(spacing: 2) {
-                                                        Text("\(characterManager.character.maxConsecutiveDays)")
+                                                        Text("\(thisMonthPersonalAchievements + thisMonthFamilyAchievements)")
                                                             .font(.title3)
                                                             .fontWeight(.bold)
                                                             .foregroundColor(.purple)
-                                                        Text("最高連続記録")
+                                                        Text("今月の総達成数")
                                                             .font(.caption2)
                                                             .foregroundColor(.secondary)
                                                     }
                                                 }
                                                 
                                                 HStack {
-                                                    Text("\(settingsManager.defaultGitHubUsername)")
+                                                    Text("目標達成状況")
                                                         .font(.caption)
                                                         .fontWeight(.semibold)
                                                         .foregroundColor(.blue)
                                                     Spacer()
-                                                    Text("総コントリビューション: \(contributionData.totalContributions)")
+                                                    Text("個人: \(thisMonthPersonalAchievements) / ファミリー: \(thisMonthFamilyAchievements)")
                                                         .font(.caption)
                                                         .foregroundColor(.secondary)
                                                 }
@@ -433,6 +497,9 @@ struct GitHubContributionsView: View {
         }
         .navigationTitle("GitHub Contributions")
         .onAppear {
+            // 目標達成記録を読み込み
+            loadGoalAchievements()
+            
             // 設定が完了している場合は自動的にコントリビューションとコミット情報を取得
             if settingsManager.hasGitHubToken() && !settingsManager.defaultGitHubUsername.isEmpty {
                 Task {
