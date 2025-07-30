@@ -7,7 +7,22 @@
 
 import Foundation
 import SwiftUI
+import SwiftData
 
+@Model
+class FamilyGoalAchievementRecord {
+    var goalId: String
+    var title: String
+    var achievedDate: Date
+    var isCompleted: Bool
+    
+    init(goalId: String, title: String, achievedDate: Date, isCompleted: Bool) {
+        self.goalId = goalId
+        self.title = title
+        self.achievedDate = achievedDate
+        self.isCompleted = isCompleted
+    }
+}
 @MainActor
 class FamilyGoalManager: ObservableObject {
     @Published var familyMissions: [FamilyMissionResponse] = []

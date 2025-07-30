@@ -71,4 +71,4 @@ struct AddGoalView: View {
 
 #Preview {
     AddGoalView(userGoalManager: UserGoalManager())
-} 
+}

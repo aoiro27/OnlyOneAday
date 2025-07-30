@@ -154,7 +154,7 @@ struct GoalsView: View {
         }
     }
     
-
+    
     
     private func checkAndResetGoals() {
         let calendar = Calendar.current
@@ -453,7 +453,7 @@ struct FamilyGoalsTabView: View {
                         }
                     }
                     
-
+                    
                 }
             }
         }
@@ -728,6 +728,33 @@ struct UserGoalRowView: View {
         let success = await userGoalManager.completeUserGoal(goalId: goal.goalId)
         
         if success {
+            
+            // 目標達成記録を作成して保存
+            let achievementRecord = GoalAchievementRecord(
+                goalId: goal.goalId,
+                title: goal.title,
+                achievedDate: Date(),
+                isCompleted: true
+            )
+            modelContext.insert(achievementRecord)
+            
+            do {
+                try modelContext.save()
+                let fetchDescriptor = FetchDescriptor<GoalAchievementRecord>()
+                   if let savedRecords = try? modelContext.fetch(fetchDescriptor) {
+                       print("🎯 Saved GoalAchievementRecords in SwiftData:")
+                       for record in savedRecords {
+                           print("   - goalId: \(record.goalId)")
+                           print("   - title: \(record.title)")
+                           print("   - achievedDate: \(record.achievedDate)")
+                           print("   - isCompleted: \(record.isCompleted)")
+                           print("   ---")
+                       }
+                   }
+            } catch {
+                print("Failed to save achievement record: \(error)")
+            }
+            
             // ファミリーに参加している場合はプッシュ通知を送信
             if familyGoalManager.isFamilyIdSet {
                 await familyGoalManager.sendGoalAchievementNotification(goalTitle: goal.title)
@@ -796,6 +823,22 @@ struct FamilyMissionRowView: View {
         )
         
         if success {
+            
+            // 目標達成記録を作成して保存
+            let achievementRecord = FamilyGoalAchievementRecord(
+                goalId: mission.docId,
+                title: mission.mission,
+                achievedDate: Date(),
+                isCompleted: true
+            )
+            modelContext.insert(achievementRecord)
+            
+            do {
+                try modelContext.save()
+            } catch {
+                print("Failed to save achievement record: \(error)")
+            }
+            
             // 報酬を自動的に付与
             claimReward()
             showingRewardAlert = true
@@ -876,4 +919,4 @@ struct FamilyIdNotSetView: View {
 #Preview {
     GoalsView()
         .modelContainer(for: [Goal.self], inMemory: true)
-} 
+}

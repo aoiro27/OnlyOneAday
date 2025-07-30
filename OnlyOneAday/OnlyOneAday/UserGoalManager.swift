@@ -6,14 +6,38 @@
 //
 
 import Foundation
+import SwiftData
 import SwiftUI
+
+@Model
+class GoalAchievementRecord {
+    var goalId: String
+    var title: String
+    var achievedDate: Date
+    var isCompleted: Bool
+    
+    init(goalId: String, title: String, achievedDate: Date, isCompleted: Bool) {
+        self.goalId = goalId
+        self.title = title
+        self.achievedDate = achievedDate
+        self.isCompleted = isCompleted
+    }
+}
 
 class UserGoalManager: ObservableObject {
     private let api = UserGoalAPI()
+    @Environment(\.modelContext) private var modelContext: ModelContext
     
     @Published var userGoals: [UserGoalInfo] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    
+    init() {
+        // 初期化時に目標一覧を取得
+        Task {
+            await fetchUserGoals()
+        }
+    }
     
     // ユーザーIDを取得（デバイス固有のIDを使用）
     private var userId: String {
@@ -23,13 +47,6 @@ class UserGoalManager: ObservableObject {
             let newId = UUID().uuidString
             UserDefaults.standard.set(newId, forKey: "userId")
             return newId
-        }
-    }
-    
-    init() {
-        // 初期化時に目標一覧を取得
-        Task {
-            await fetchUserGoals()
         }
     }
     
@@ -115,7 +132,6 @@ class UserGoalManager: ObservableObject {
             return false
         }
     }
-    
     // 目標を完了状態に変更
     @MainActor
     func completeUserGoal(goalId: String) async -> Bool {
