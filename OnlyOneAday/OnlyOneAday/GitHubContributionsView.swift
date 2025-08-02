@@ -14,20 +14,24 @@ struct GitHubContributionsView: View {
     
     // 目標達成統計
     @State private var personalGoalAchievements: [GoalAchievementRecord] = []
-    @State private var familyGoalAchievements: [GoalAchievementRecord] = []
+    @State private var familyGoalAchievements: [FamilyGoalAchievementRecord] = []
     
     // 今日の目標達成数
     private var todayPersonalAchievements: Int {
-        let today = Calendar.current.startOfDay(for: Date())
-        return personalGoalAchievements.filter { 
-            Calendar.current.isDate($0.achievedDate, inSameDayAs: today) 
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        return personalGoalAchievements.filter { record in
+            calendar.isDate(record.achievedDate, inSameDayAs: today)
         }.count
     }
     
     private var todayFamilyAchievements: Int {
-        let today = Calendar.current.startOfDay(for: Date())
-        return familyGoalAchievements.filter { 
-            Calendar.current.isDate($0.achievedDate, inSameDayAs: today) 
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        return familyGoalAchievements.filter { record in
+            calendar.isDate(record.achievedDate, inSameDayAs: today)
         }.count
     }
     
@@ -135,26 +139,83 @@ struct GitHubContributionsView: View {
     
     // SwiftDataから目標達成記録を読み込む
     private func loadGoalAchievements() {
-        let fetchDescriptor = FetchDescriptor<GoalAchievementRecord>()
+        let personalFetchDescriptor = FetchDescriptor<GoalAchievementRecord>()
+        let familyFetchDescriptor = FetchDescriptor<FamilyGoalAchievementRecord>()
         
         do {
-            let allRecords = try modelContext.fetch(fetchDescriptor)
+            let personalRecords = try modelContext.fetch(personalFetchDescriptor)
+            let familyRecords = try modelContext.fetch(familyFetchDescriptor)
+            
+            print("🔍 All GoalAchievementRecords:")
+            for (index, record) in personalRecords.enumerated() {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+                formatter.timeZone = TimeZone.current
+                let localDateString = formatter.string(from: record.achievedDate)
+                print("   [Personal \(index)] goalId: \(record.goalId), title: \(record.title), date: \(record.achievedDate) (Local: \(localDateString))")
+            }
+            
+            print("🔍 All FamilyGoalAchievementRecords:")
+            for (index, record) in familyRecords.enumerated() {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+                formatter.timeZone = TimeZone.current
+                let localDateString = formatter.string(from: record.achievedDate)
+                print("   [Family \(index)] goalId: \(record.goalId), title: \(record.title), date: \(record.achievedDate) (Local: \(localDateString))")
+            }
             
             // 個人目標とファミリー目標を分類
-            // 個人目標は通常のUUID形式、ファミリー目標はdocId形式
-            personalGoalAchievements = allRecords.filter { record in
-                // UUID形式のgoalIdは個人目標
-                UUID(uuidString: record.goalId) != nil
-            }
-            
-            familyGoalAchievements = allRecords.filter { record in
-                // UUID形式でないgoalIdはファミリー目標
-                UUID(uuidString: record.goalId) == nil
-            }
+            personalGoalAchievements = personalRecords
+            familyGoalAchievements = familyRecords
             
             print("📊 Loaded goal achievements:")
             print("   Personal goals: \(personalGoalAchievements.count)")
             print("   Family goals: \(familyGoalAchievements.count)")
+            
+            // 今日の達成状況を詳細表示
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let now = Date()
+            print("📅 Today's achievements:")
+            print("   Now: \(now)")
+            print("   Today start: \(today)")
+            print("   Calendar timeZone: \(calendar.timeZone.identifier)")
+            
+            let todayPersonal = personalGoalAchievements.filter { record in
+                let isToday = calendar.isDate(record.achievedDate, inSameDayAs: today)
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+                formatter.timeZone = TimeZone.current
+                let localDateString = formatter.string(from: record.achievedDate)
+                print("   Personal check: \(record.title) - \(record.achievedDate) (Local: \(localDateString)) -> isToday: \(isToday)")
+                return isToday
+            }
+            print("   Personal: \(todayPersonal.count)")
+            for record in todayPersonal {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+                formatter.timeZone = TimeZone.current
+                let localDateString = formatter.string(from: record.achievedDate)
+                print("     - \(record.title) (Local: \(localDateString))")
+            }
+            
+            let todayFamily = familyGoalAchievements.filter { record in
+                let isToday = calendar.isDate(record.achievedDate, inSameDayAs: today)
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+                formatter.timeZone = TimeZone.current
+                let localDateString = formatter.string(from: record.achievedDate)
+                print("   Family check: \(record.title) - \(record.achievedDate) (Local: \(localDateString)) -> isToday: \(isToday)")
+                return isToday
+            }
+            print("   Family: \(todayFamily.count)")
+            for record in todayFamily {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+                formatter.timeZone = TimeZone.current
+                let localDateString = formatter.string(from: record.achievedDate)
+                print("     - \(record.title) (Local: \(localDateString))")
+            }
             
         } catch {
             print("Failed to load goal achievements: \(error)")

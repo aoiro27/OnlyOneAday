@@ -56,6 +56,22 @@ struct GoalsView: View {
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
+                .onChange(of: selectedTab) { _, newTab in
+                    // タブが切り替わったときにAPI取得を実行
+                    Task {
+                        if newTab == 0 {
+                            // 個人ミッションタブが選択された場合
+                            await userGoalManager.fetchUserGoals()
+                        } else {
+                            // ファミリーミッションタブが選択された場合
+                            familyGoalManager.checkLocalFamilyId()
+                            if familyGoalManager.isFamilyIdSet {
+                                await familyGoalManager.fetchFamilyStatus()
+                                await familyGoalManager.fetchFamilyMissions()
+                            }
+                        }
+                    }
+                }
                 
                 if selectedTab == 0 {
                     // 個人目標タブ
@@ -121,10 +137,15 @@ struct GoalsView: View {
         }
         .onAppear {
             loadDailyRewards()
-            // 個人目標はクラウド管理のため、リセット機能は不要
-            familyGoalManager.checkLocalFamilyId()
-            if familyGoalManager.isFamilyIdSet {
-                Task {
+            
+            // 初回表示時に最新データを取得
+            Task {
+                // 個人目標を取得
+                await userGoalManager.fetchUserGoals()
+                
+                // ファミリー目標を取得
+                familyGoalManager.checkLocalFamilyId()
+                if familyGoalManager.isFamilyIdSet {
                     await familyGoalManager.fetchFamilyStatus()
                     await familyGoalManager.fetchFamilyMissions()
                 }
